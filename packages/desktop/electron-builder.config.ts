@@ -27,7 +27,7 @@ const channel = (() => {
 })()
 
 const getBase = (): Configuration => ({
-  artifactName: "opencode-desktop-${os}-${arch}.${ext}",
+  artifactName: "gloam-desktop-${os}-${arch}.${ext}",
   directories: {
     output: "dist",
     buildResources: "resources",
@@ -54,7 +54,7 @@ const getBase = (): Configuration => ({
     sign: true,
   },
   protocols: {
-    name: "OpenCode",
+    name: "Gloam",
     schemes: ["opencode"],
   },
   win: {
@@ -85,29 +85,29 @@ function getConfig() {
     case "dev": {
       return {
         ...base,
-        appId: "ai.opencode.desktop.dev",
-        productName: "OpenCode Dev",
-        rpm: { packageName: "opencode-dev" },
+        appId: "ai.gloam.desktop.dev",
+        productName: "Gloam Desktop",
+        rpm: { packageName: "gloam-desktop-dev" },
       }
     }
     case "beta": {
       return {
         ...base,
-        appId: "ai.opencode.desktop.beta",
-        productName: "OpenCode Beta",
-        protocols: { name: "OpenCode Beta", schemes: ["opencode"] },
+        appId: "ai.gloam.desktop.beta",
+        productName: "Gloam Desktop Beta",
+        protocols: { name: "Gloam Beta", schemes: ["opencode"] },
         publish: { provider: "github", owner: "anomalyco", repo: "opencode-beta", channel: "latest" },
-        rpm: { packageName: "opencode-beta" },
+        rpm: { packageName: "gloam-desktop-beta" },
       }
     }
     case "prod": {
       return {
         ...base,
-        appId: "ai.opencode.desktop",
-        productName: "OpenCode",
-        protocols: { name: "OpenCode", schemes: ["opencode"] },
+        appId: "ai.gloam.desktop",
+        productName: "Gloam Desktop",
+        protocols: { name: "Gloam", schemes: ["opencode"] },
         publish: { provider: "github", owner: "anomalyco", repo: "opencode", channel: "latest" },
-        rpm: { packageName: "opencode" },
+        rpm: { packageName: "gloam-desktop" },
       }
     }
   }
