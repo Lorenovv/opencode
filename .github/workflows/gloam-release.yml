@@ -1,53 +1,16 @@
-name: Gloam Release
-
-on:
-  push:
-    tags: ["v*"]
-  workflow_dispatch:
-
-permissions:
-  contents: write
-
-jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: bun-linux-x64
-            out: gloam-linux-x64
-          - os: macos-latest
-            target: bun-darwin-arm64
-            out: gloam-macos-arm64
-          - os: macos-13
-            target: bun-darwin-x64
-            out: gloam-macos-x64
-          - os: windows-latest
-            target: bun-windows-x64
-            out: gloam-windows-x64.exe
-    runs-on: $ matrix.os 
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.14
-      - run: bun install
-      - name: Build binary
-        run: bun build --compile --target=$ matrix.target  packages/opencode/src/index.ts --outfile $ matrix.out 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: $ matrix.out 
-          path: $ matrix.out 
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/**/*
+strategy:
+  fail-fast: false
+  matrix:
+    include:
+      - os: ubuntu-latest
+        target: bun-linux-x64
+        out: gloam-linux-x64
+      - os: macos-latest
+        target: bun-darwin-arm64
+        out: gloam-macos-arm64
+      - os: macos-13
+        target: bun-darwin-x64
+        out: gloam-macos-x64
+      - os: windows-latest
+        target: bun-windows-x64
+        out: gloam-windows-x64.exe
