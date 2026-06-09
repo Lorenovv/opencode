@@ -10,13 +10,22 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14
-      - run: bun install --ignore-scripts
+      - name: Install deps
+        run: bun install --ignore-scripts
+      - name: Fix node-pty (best effort)
+        continue-on-error: true
+        run: bun run --cwd packages/core fix-node-pty
       - name: Build binary
-        run: bun build --compile --target=bun-windows-x64 packages/opencode/src/index.ts --outfile gloam-windows-x64.exe
-      - uses: actions/upload-artifact@v4
+        run: bun run --cwd packages/opencode build -- --single
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: gloam-windows-x64
-          path: gloam-windows-x64.exe
+          path: packages/opencode/dist/opencode-windows-x64/bin/
+          if-no-files-found: warn
