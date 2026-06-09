@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "theme": "gloam",
+  "provider": {
+    "gloam": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Gloam AI",
+      "options": {
+        "baseURL": "https://gateway.gloam.ai/v1"
+      },
+      "models": {
+        "gloam-opus-4.8": {
+          "name": "Claude Opus 4.8 (Gloam)"
+        },
+        "gloam-sonnet": {
+          "name": "Claude Sonnet (Gloam)"
+        },
+        "gloam-fast": {
+          "name": "Gloam Fast"
+        }
+      }
+    }
+  },
+  "model": "gloam/gloam-opus-4.8"
+}
