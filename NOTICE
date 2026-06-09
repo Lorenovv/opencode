@@ -1,0 +1,12 @@
+Gloam Code
+==========
+
+Gloam Code is a branded distribution built on top of opencode
+(https://github.com/anomalyco/opencode), used under the MIT License.
+
+The original opencode copyright and MIT license are retained in the LICENSE
+file. Gloam-specific changes (branding, default provider configuration, build
+and distribution scripts) are (c) Gloam.
+
+This product is not affiliated with or endorsed by the opencode project or its
+authors.
