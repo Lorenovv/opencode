@@ -18,6 +18,8 @@ export const DialogSelectProvider: Component = () => {
   const providers = useProviders()
   const language = useLanguage()
 
+  const searchProps = () => ({ placeholder: language.t("dialog.provider.search.placeholder"), autofocus: true })
+
   const popularGroup = () => language.t("dialog.provider.group.popular")
   const otherGroup = () => language.t("dialog.provider.group.other")
   const customLabel = () => language.t("settings.providers.tag.custom")
@@ -32,7 +34,7 @@ export const DialogSelectProvider: Component = () => {
     <Dialog title={language.t("command.provider.connect")} transition>
       <List
         class="px-3"
-        search= placeholder: language.t("dialog.provider.search.placeholder"), autofocus: true 
+        search={searchProps()}
         emptyMessage={language.t("dialog.provider.empty")}
         activeIcon="plus-small"
         key={(x) => x?.id}
