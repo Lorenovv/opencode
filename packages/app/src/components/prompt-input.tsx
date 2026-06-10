@@ -1644,7 +1644,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                     type="submit"
                     disabled={!working() && blank()}
                     tabIndex={store.mode === "normal" ? undefined : -1}
-                    icon={stopping() ? "stop" : store.mode === "shell" ? "arrow-undo-down" : "arrow-up"}
+                    icon={stopping() ? "stop" : store.mode === "shell" ? "arrow-undo-down" : "send"}
                     variant="primary"
                     class="size-7 rounded-md p-[6px] text-v2-icon-icon-muted shadow-[var(--v2-elevation-button-contrast)] disabled:opacity-50"
                     style={{
@@ -1787,7 +1787,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       type="submit"
                       disabled={!working() && blank()}
                       tabIndex={store.mode === "normal" ? undefined : -1}
-                      icon={stopping() ? "stop" : store.mode === "shell" ? "arrow-undo-down" : "arrow-up"}
+                      icon={stopping() ? "stop" : store.mode === "shell" ? "arrow-undo-down" : "send"}
                       variant="primary"
                       class="size-8"
                       aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
