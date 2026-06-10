@@ -8,8 +8,10 @@ import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { DialogConnectProvider } from "./dialog-connect-provider"
 import { useLanguage } from "@/context/language"
 import { DialogCustomProvider } from "./dialog-custom-provider"
+import { DialogConnectGloam } from "./dialog-connect-gloam"
 
 const CUSTOM_ID = "_custom"
+const GLOAM_ID = "gloam"
 
 export const DialogSelectProvider: Component = () => {
   const dialog = useDialog()
@@ -30,13 +32,19 @@ export const DialogSelectProvider: Component = () => {
     <Dialog title={language.t("command.provider.connect")} transition>
       <List
         class="px-3"
-        search={{ placeholder: language.t("dialog.provider.search.placeholder"), autofocus: true }}
+        search= placeholder: language.t("dialog.provider.search.placeholder"), autofocus: true 
         emptyMessage={language.t("dialog.provider.empty")}
         activeIcon="plus-small"
         key={(x) => x?.id}
         items={() => {
           language.locale()
-          return [{ id: CUSTOM_ID, name: customLabel() }, ...providers.all().values()]
+          const all = [...providers.all().values()]
+          const hasGloam = all.some((p) => p.id === GLOAM_ID)
+          return [
+            ...(hasGloam ? [] : [{ id: GLOAM_ID, name: "Gloam" }]),
+            { id: CUSTOM_ID, name: customLabel() },
+            ...all,
+          ]
         }}
         filterKeys={["id", "name"]}
         groupBy={(x) => (popularProviders.includes(x.id) ? popularGroup() : otherGroup())}
@@ -55,6 +63,10 @@ export const DialogSelectProvider: Component = () => {
         }}
         onSelect={(x) => {
           if (!x) return
+          if (x.id === GLOAM_ID) {
+            dialog.show(() => <DialogConnectGloam back="providers" />)
+            return
+          }
           if (x.id === CUSTOM_ID) {
             dialog.show(() => <DialogCustomProvider back="providers" />)
             return
@@ -66,6 +78,9 @@ export const DialogSelectProvider: Component = () => {
           <div class="px-1.25 w-full flex items-center gap-x-3">
             <ProviderIcon data-slot="list-item-extra-icon" id={i.id} />
             <span>{i.name}</span>
+            <Show when={i.id === GLOAM_ID}>
+              <Tag>{language.t("dialog.provider.tag.recommended")}</Tag>
+            </Show>
             <Show when={i.id === "opencode"}>
               <div class="text-14-regular text-text-weak">{language.t("dialog.provider.opencode.tagline")}</div>
             </Show>
