@@ -1,0 +1,51 @@
+{
+  "$schema": "https://opencode.ai/desktop-theme.json",
+  "name": "Gloam",
+  "id": "gloam",
+  "light": {
+    "palette": {
+      "neutral": "#f5f0ff",
+      "ink": "#2d2640",
+      "primary": "#6a4ca3",
+      "accent": "#8e3fd0",
+      "success": "#2f9e6b",
+      "warning": "#c98a00",
+      "error": "#d6456b",
+      "info": "#4a63d0",
+      "diffAdd": "#cdf6df",
+      "diffDelete": "#f7c9e6"
+    },
+    "overrides": {
+      "syntax-comment": "#8a7aa8",
+      "syntax-keyword": "#8e3fd0",
+      "syntax-string": "#2f8b5d",
+      "syntax-primitive": "#a13bd6",
+      "syntax-property": "#4a63d0",
+      "syntax-type": "#9d6b00",
+      "syntax-constant": "#c0457a"
+    }
+  },
+  "dark": {
+    "palette": {
+      "neutral": "#0c0c14",
+      "ink": "#e8e6f0",
+      "primary": "#b39ddb",
+      "accent": "#c77dff",
+      "success": "#7be0b0",
+      "warning": "#ffd580",
+      "error": "#ff6b81",
+      "info": "#8aa0ff",
+      "diffAdd": "#4fb98a",
+      "diffDelete": "#d85a86"
+    },
+    "overrides": {
+      "syntax-comment": "#6e6a8c",
+      "syntax-keyword": "#c77dff",
+      "syntax-string": "#9fe8c0",
+      "syntax-primitive": "#d6a8ff",
+      "syntax-property": "#8aa0ff",
+      "syntax-type": "#ffd580",
+      "syntax-constant": "#ff8fb0"
+    }
+  }
+}
