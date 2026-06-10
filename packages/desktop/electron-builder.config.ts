@@ -59,8 +59,8 @@ const getBase = (): Configuration => ({
   },
   win: {
     icon: `resources/icons/icon.ico`,
-    publisherName: "Gloam",
     signtoolOptions: {
+      publisherName: "Gloam",
       sign: signWindows,
     },
     target: ["nsis"],
