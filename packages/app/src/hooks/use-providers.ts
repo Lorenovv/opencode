@@ -5,6 +5,7 @@ import { Iterable, pipe } from "effect"
 import { createMemo } from "solid-js"
 
 export const popularProviders = [
+  "gloam",
   "opencode",
   "opencode-go",
   "anthropic",
