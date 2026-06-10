@@ -18,6 +18,12 @@ const STORAGE_KEYS = {
   THEME_CSS_DARK: "opencode-theme-css-dark",
 } as const
 
+// One-time migration: force the Gloam theme as the default for all installs,
+// including upgrades from older dev builds that persisted a different theme id.
+// Bump GLOAM_THEME_MIGRATION_VERSION to re-run this for everyone.
+const GLOAM_THEME_MIGRATION_KEY = "gloam-theme-migration"
+const GLOAM_THEME_MIGRATION_VERSION = "1"
+
 const THEME_STYLE_ID = "oc-theme"
 let files: Record<string, () => Promise<{ default: DesktopTheme }>> | undefined
 let ids: string[] | undefined
@@ -116,6 +122,14 @@ function clear() {
   drop(STORAGE_KEYS.THEME_CSS_DARK)
 }
 
+function runGloamThemeMigration() {
+  if (typeof localStorage !== "object") return
+  if (read(GLOAM_THEME_MIGRATION_KEY) === GLOAM_THEME_MIGRATION_VERSION) return
+  write(STORAGE_KEYS.THEME_ID, "gloam")
+  clear()
+  write(GLOAM_THEME_MIGRATION_KEY, GLOAM_THEME_MIGRATION_VERSION)
+}
+
 function ensureThemeStyleElement(): HTMLStyleElement {
   const existing = document.getElementById(THEME_STYLE_ID) as HTMLStyleElement | null
   if (existing) return existing
@@ -173,6 +187,7 @@ function cacheThemeVariants(theme: DesktopTheme, themeId: string) {
 export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
   name: "Theme",
   init: (props: { defaultTheme?: string; onThemeApplied?: (theme: DesktopTheme, mode: "light" | "dark") => void }) => {
+    runGloamThemeMigration()
     const themeId = normalize(read(STORAGE_KEYS.THEME_ID) ?? props.defaultTheme) ?? "oc-2"
     const colorScheme = (read(STORAGE_KEYS.COLOR_SCHEME) as ColorScheme | null) ?? "system"
     const mode = colorScheme === "system" ? getSystemMode() : colorScheme
