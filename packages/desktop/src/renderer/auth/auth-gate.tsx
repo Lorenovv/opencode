@@ -29,13 +29,13 @@ const LOGIN_CSS = `
 
 .gl-btn-primary {
   color: #fff;
-  background: linear-gradient(135deg, #6d5efc 0%, #9b5cf6 100%);
+  background: #7c5cff;
 }
 .gl-btn-primary:hover:not(:disabled) {
-  filter: brightness(1.08);
-  box-shadow: 0 8px 22px -8px rgba(124, 92, 246, .65);
+  background: #8b6dff;
+  box-shadow: 0 8px 22px -8px rgba(124, 92, 246, .6);
 }
-.gl-btn-primary:active:not(:disabled) { transform: translateY(1px); filter: brightness(.98); }
+.gl-btn-primary:active:not(:disabled) { transform: translateY(1px); background: #6f50f0; }
 
 .gl-btn-oauth {
   color: inherit;
