@@ -24,6 +24,10 @@ const primaryButtonStyle: JSX.CSSProperties = {
   color: "inherit",
 }
 
+const errorStyle: JSX.CSSProperties = {
+  color: "#f87171",
+}
+
 function LoginScreen(props: { onAuthenticated: () => void }) {
   const [mode, setMode] = createSignal<Mode>("login")
   const [email, setEmail] = createSignal("")
@@ -111,7 +115,7 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
         </div>
 
         <Show when={error()}>
-          <div class="text-sm" style= color: "#f87171" >
+          <div class="text-sm" style={errorStyle}>
             {error()}
           </div>
         </Show>
@@ -143,8 +147,6 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
             </button>
           </Show>
         </div>
-
-        {/* TODO: Google / Telegram \u0432\u0445\u043e\u0434 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u043c \u043e\u0442\u0434\u0435\u043b\u044c\u043d\u044b\u043c \u044d\u0442\u0430\u043f\u043e\u043c. */}
       </form>
     </div>
   )
