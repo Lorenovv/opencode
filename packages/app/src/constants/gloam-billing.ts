@@ -1,20 +1,26 @@
 // Gloam billing / tariff configuration for the desktop Settings UI.
 //
-// Centralizes the external site URLs (tariffs, billing, auth) and the per-model
-// quota cost multipliers (xN) so the Settings "Billing" and "Tariffs" tabs have
-// a single source of truth. The multipliers mirror the gateway/admin model
-// config; a model that is not listed costs 1x.
+// Centralizes the external site URL and the per-model quota cost multipliers
+// (xN) so the Settings "Billing" and "Tariffs" tabs have a single source of
+// truth. The multipliers mirror the gateway/admin model config; a model that is
+// not listed costs 1x.
+//
+// The Gloam site is a single-page app (built for PWA / Telegram) with in-page
+// tabs ("Chat" / "Subscription" / settings) rather than distinct routes, so all
+// of the links below point at the site root. Subscription management and
+// payment happen there (cards / SBP / crypto; Pro auto-activates after a
+// successful payment).
 
 export const GLOAM_SITE_BASE = "https://bot-gloam-ai.vercel.app"
 
-// Page that lists the tariffs and lets the user buy / renew (opens on the site).
-export const GLOAM_TARIFFS_URL = `${GLOAM_SITE_BASE}/tariffs`
+// Subscription / tariffs management lives under the site's "Subscription" tab.
+export const GLOAM_TARIFFS_URL = GLOAM_SITE_BASE
 
-// Account / billing page: current plan, payment method, invoice history.
-export const GLOAM_BILLING_URL = `${GLOAM_SITE_BASE}/account`
+// Billing (current plan, payment method, invoices) also lives on the site.
+export const GLOAM_BILLING_URL = GLOAM_SITE_BASE
 
-// Auth page to send unauthenticated users to before tariffs / billing.
-export const GLOAM_AUTH_URL = `${GLOAM_SITE_BASE}/login`
+// Auth is handled by the site itself (Telegram / PWA), so just open the root.
+export const GLOAM_AUTH_URL = GLOAM_SITE_BASE
 
 // Per-model quota cost multipliers. Keys match the model id, optionally with a
 // reasoning-effort variant suffix ("<modelID>-<variant>"). Lookup tries the
