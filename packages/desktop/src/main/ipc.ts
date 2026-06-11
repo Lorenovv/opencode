@@ -5,9 +5,10 @@ import { app, BrowserWindow, Notification, clipboard, dialog, ipcMain, shell } f
 import type { IpcMainEvent, IpcMainInvokeEvent } from "electron"
 import type { DesktopMenuAction } from "@opencode-ai/app/desktop-menu"
 
-import type { FatalRendererError, ServerReadyData, TitlebarTheme } from "../preload/types"
+import type { FatalRendererError, GloamLoginRequest, ServerReadyData, TitlebarTheme } from "../preload/types"
 import { runDesktopMenuAction } from "./desktop-menu-actions"
 import { assertAttachmentBudget, createPickedFileAuthorizations } from "./attachment-picker"
+import * as gloamAuth from "./gloam-auth"
 import { getStore } from "./store"
 import { getPinchZoomEnabled, setPinchZoomEnabled, setTitlebar, updateTitlebar } from "./windows"
 import type { UpdaterController } from "./updater-controller"
@@ -71,6 +72,13 @@ export function registerIpcHandlers(deps: Deps) {
   ipcMain.handle("updater-unsubscribe", (event) => updaterSubscriptions.delete(event.sender.id))
   ipcMain.handle("updater-check", () => deps.updater.check())
   ipcMain.handle("updater-install", () => deps.updater.install())
+  ipcMain.handle("gloam-auth-config", () => gloamAuth.config())
+  ipcMain.handle("gloam-auth-login", (_event: IpcMainInvokeEvent, req: GloamLoginRequest) => gloamAuth.login(req))
+  ipcMain.handle("gloam-auth-me", () => gloamAuth.me())
+  ipcMain.handle("gloam-auth-logout", () => {
+    gloamAuth.clearSession()
+  })
+  ipcMain.handle("gloam-auth-has-token", () => gloamAuth.getStoredToken() != null)
   ipcMain.handle("set-background-color", (_event: IpcMainInvokeEvent, color: string) => deps.setBackgroundColor(color))
   ipcMain.handle("export-debug-logs", () => deps.exportDebugLogs())
   ipcMain.handle("record-fatal-renderer-error", (_event: IpcMainInvokeEvent, error: FatalRendererError) =>
