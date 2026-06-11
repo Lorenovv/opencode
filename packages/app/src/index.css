@@ -31,6 +31,26 @@
     background-attachment: fixed;
   }
 
+  /* Gloam: extend the ambient gradient to the chat / session view. The session
+     page root is transparent, so its backdrop is painted by the content panel
+     that sits next to the sidebar rail. Painting the gradient there makes the
+     ambient glow read during chat, not just on the home screen. Slightly higher
+     intensity compensates for the darker surface behind the chat. */
+  [data-component="sidebar-rail"] + div {
+    background-image:
+      radial-gradient(1200px 760px at 0% -8%, color-mix(in oklab, #7c5cff 22%, transparent), transparent 58%),
+      radial-gradient(1100px 720px at 108% 112%, color-mix(in oklab, #38bdf8 18%, transparent), transparent 55%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+
+  /* Gloam: darken the dialog scrim. The default v2 overlay scrim renders too
+     light over the dark theme, which looked like a washed-out white background
+     when opening Settings. Use a deep translucent backdrop instead. */
+  [data-component="dialog-overlay"] {
+    background-color: color-mix(in srgb, #05060a 62%, transparent) !important;
+  }
+
   @keyframes session-progress-whip {
     0% {
       clip-path: inset(0 100% 0 0 round 999px);
