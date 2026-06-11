@@ -219,3 +219,9 @@
   width: 100% !important;
   max-width: 100% !important;
 }
+
+/* Gloam: brand ring around the account avatar initial in the Settings nav. */
+[data-component="tabs-v2"][data-variant="settings"] [data-slot="tabs-v2-list"] .rounded-full {
+  border: 1.5px solid color-mix(in srgb, #7c5cff 55%, transparent);
+  background-color: color-mix(in srgb, #7c5cff 16%, transparent);
+}
