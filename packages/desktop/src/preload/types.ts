@@ -79,6 +79,7 @@ export type GloamAuthAPI = {
   me: () => Promise<GloamMe>
   logout: () => Promise<void>
   hasToken: () => Promise<boolean>
+  getToken: () => Promise<string | null>
 }
 
 export type ElectronAPI = {
