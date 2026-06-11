@@ -1,4 +1,5 @@
-import { net } from "electron"
+import { net, shell } from "electron"
+import { randomBytes } from "node:crypto"
 
 import type {
 	GloamAuthConfig,
@@ -117,7 +118,7 @@ export async function login(req: GloamLoginRequest): Promise<GloamSession> {
 	}
 	if (!parsed.token || typeof parsed.expires_at_unix !== "number") {
 		throw new Error(
-			"\u0421\u0435\u0440\u0432\u0435\u0440 \u043d\u0435 \u0432\u0435\u0440\u043d\u0443\u043b \u0442\u043e\u043a\u0435\u043d \u0434\u0435\u0441\u043a\u0442\u043e\u043f-\u0441\u0435\u0441\u0441\u0438\u0438. \u041e\u0431\u043d\u043e\u0432\u0438\u0442\u0435 \u0431\u044d\u043a\u0435\u043d\u0434 (PR #148).",
+			"Сервер не вернул токен десктоп-сессии. Обновите бэкенд (PR #148).",
 		)
 	}
 	storeSession(parsed.token, parsed.expires_at_unix)
@@ -180,4 +181,112 @@ export async function config(): Promise<GloamAuthConfig> {
 		writeLog("gloam-auth", "config() request failed", { error: String(error) }, "error")
 		return {}
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Browser-based login flows (Google redirect + Telegram bot deep link)
+// ---------------------------------------------------------------------------
+//
+// Unlike the synchronous flows in `login()` (POST a payload, get a token back),
+// these two bounce the user out to the system browser and bring the session
+// back through a different channel:
+//
+//   * Google: opens `${API}/auth/desktop/google/start`, which redirects to
+//     Google's consent screen and finally to `/auth/desktop/google/callback`.
+//     That callback renders an interstitial that `location.replace`s to
+//     `opencode://auth/callback?provider=google&token=...&expires_at_unix=...`.
+//     The OS hands that deep link to the app; the renderer forwards it to
+//     `applyDeepLinkSession()`.
+//
+//   * Telegram: opens `https://t.me/<bot>?start=desktop_<state>`. The bot
+//     resolves the account and stashes it against <state>; the renderer then
+//     polls `pollTelegramExchange(state)` which claims the session via the
+//     existing `/auth/telegram/exchange` endpoint. (Telegram won't linkify a
+//     custom `opencode://` scheme, so there is no deep link for this flow.)
+
+const DEEP_LINK_AUTH_ROUTE = "auth/callback"
+
+export function googleStartUrl(): string {
+	return `${apiBase()}/auth/desktop/google/start`
+}
+
+export async function startGoogleLogin(): Promise<string> {
+	const url = googleStartUrl()
+	await shell.openExternal(url)
+	return url
+}
+
+export async function startTelegramLogin(): Promise<{ url: string; state: string }> {
+	const cfg = await config()
+	const rawUsername =
+		(typeof cfg.bot_username === "string" && cfg.bot_username) ||
+		(typeof cfg.telegramBotUsername === "string" && cfg.telegramBotUsername) ||
+		""
+	const username = rawUsername.replace(/^@/, "").trim()
+	if (!username) {
+		throw new Error(
+			"Не настроен Telegram-бот: сервер не вернул bot_username. Обратитесь к администратору.",
+		)
+	}
+	const state = randomBytes(18).toString("base64url")
+	const url = `https://t.me/${encodeURIComponent(username)}?start=desktop_${state}`
+	await shell.openExternal(url)
+	return { url, state }
+}
+
+export async function pollTelegramExchange(state: string): Promise<GloamSession | null> {
+	if (!state) return null
+	let res: Response
+	try {
+		res = await net.fetch(`${apiBase()}/auth/telegram/exchange`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Gloam-Client": DESKTOP_CLIENT_HEADER,
+			},
+			body: JSON.stringify({ state }),
+		})
+	} catch (error) {
+		writeLog("gloam-auth", "telegram exchange poll failed", { error: String(error) }, "warn")
+		return null
+	}
+	// The session isn't ready until the user has actually tapped the bot link.
+	// The exchange endpoint signals "not yet" with a 4xx (typically 404); we
+	// treat any client error as "keep polling" and only surface 5xx as fatal.
+	if (res.status >= 500) {
+		const parsed = await readBody(res)
+		throw new Error(describeDetail(parsed.detail, res.status))
+	}
+	if (!res.ok) return null
+	const parsed = await readBody(res)
+	if (!parsed.token || typeof parsed.expires_at_unix !== "number") return null
+	storeSession(parsed.token, parsed.expires_at_unix)
+	return {
+		ok: true,
+		tgId: parsed.tg_id ?? 0,
+		token: parsed.token,
+		expiresAtUnix: parsed.expires_at_unix,
+	}
+}
+
+export function applyDeepLinkSession(rawUrl: string): GloamSession | null {
+	let parsed: URL
+	try {
+		parsed = new URL(rawUrl)
+	} catch {
+		return null
+	}
+	if (parsed.protocol !== "opencode:") return null
+	const route = `${parsed.host}${parsed.pathname}`.replace(/^\/+|\/+$/g, "")
+	if (route !== DEEP_LINK_AUTH_ROUTE) return null
+	const error = parsed.searchParams.get("error")
+	if (error) {
+		throw new Error(error)
+	}
+	const token = parsed.searchParams.get("token")
+	const expiresRaw = parsed.searchParams.get("expires_at_unix")
+	const expires = expiresRaw ? Number(expiresRaw) : Number.NaN
+	if (!token || !Number.isFinite(expires)) return null
+	storeSession(token, expires)
+	return { ok: true, tgId: 0, token, expiresAtUnix: expires }
 }
