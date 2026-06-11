@@ -4,8 +4,10 @@ import { Icon } from "@opencode-ai/ui/icon"
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
 import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
+import { useDialog } from "@opencode-ai/ui/context/dialog"
 
 import { useCommand } from "@/context/command"
+import { useLanguage } from "@/context/language"
 import { DESKTOP_MENU, desktopMenuVisible, type DesktopMenuAction, type DesktopMenuEntry } from "@/desktop-menu"
 import { usePlatform } from "@/context/platform"
 
@@ -15,6 +17,15 @@ export function WindowsAppMenu(props: {
   variant?: "legacy" | "v2"
 }) {
   let lastFocused: HTMLElement | undefined
+
+  const dialog = useDialog()
+  const language = useLanguage()
+
+  const openSettings = () => {
+    void import("@/components/settings-v2").then((x) => {
+      dialog.show(() => <x.DialogSettings />)
+    })
+  }
 
   const rememberFocus = () => {
     const active = document.activeElement
@@ -58,7 +69,7 @@ export function WindowsAppMenu(props: {
             variant="ghost-muted"
             size="large"
             icon={<IconV2 name="menu" />}
-            aria-label="OpenCode menu"
+            aria-label="Gloam menu"
             onPointerDown={rememberFocus}
             onKeyDown={rememberFocus}
           />
@@ -69,7 +80,7 @@ export function WindowsAppMenu(props: {
           icon="menu"
           variant="ghost"
           class="titlebar-icon rounded-md shrink-0"
-          aria-label="OpenCode menu"
+          aria-label="Gloam menu"
           onPointerDown={rememberFocus}
           onKeyDown={rememberFocus}
         />
@@ -77,7 +88,13 @@ export function WindowsAppMenu(props: {
       <DropdownMenu.Portal>
         <DropdownMenu.Content class="desktop-app-menu">
           <DropdownMenu.Group>
-            <DropdownMenu.GroupLabel class="desktop-app-menu-heading">OpenCode</DropdownMenu.GroupLabel>
+            <DropdownMenu.GroupLabel class="desktop-app-menu-heading">Gloam</DropdownMenu.GroupLabel>
+            <DesktopMenuItem
+              label={language.t("sidebar.settings")}
+              keybind={props.command.keybind("settings.open")}
+              onSelect={openSettings}
+            />
+            <DropdownMenu.Separator />
             {DESKTOP_MENU.filter((menu) => desktopMenuVisible(menu, "windows")).map((menu) => (
               <DesktopMenuSubmenu label={menu.label}>
                 {menu.items
