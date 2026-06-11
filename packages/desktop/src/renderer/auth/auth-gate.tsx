@@ -4,6 +4,54 @@ import type { GloamLoginRequest } from "../../preload/types"
 
 type Mode = "login" | "register"
 
+// Hover / focus / cursor styling lives in real CSS (injected once below) rather
+// than inline styles: inline styles cannot express :hover and would also win
+// over Tailwind utilities, so the buttons previously only reacted to clicks.
+const LOGIN_CSS = `
+.gl-field {
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  background: transparent;
+  color: inherit;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+.gl-field::placeholder { color: color-mix(in srgb, currentColor 45%, transparent); }
+.gl-field:hover:not(:disabled) { border-color: color-mix(in srgb, currentColor 34%, transparent); }
+.gl-field:focus { border-color: color-mix(in srgb, currentColor 55%, transparent); }
+
+.gl-btn {
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: filter .15s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .04s ease;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.gl-btn:disabled { cursor: default; opacity: .55; }
+
+.gl-btn-primary {
+  color: #fff;
+  background: linear-gradient(135deg, #6d5efc 0%, #9b5cf6 100%);
+}
+.gl-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 8px 22px -8px rgba(124, 92, 246, .65);
+}
+.gl-btn-primary:active:not(:disabled) { transform: translateY(1px); filter: brightness(.98); }
+
+.gl-btn-oauth {
+  color: inherit;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+}
+.gl-btn-oauth:hover:not(:disabled) {
+  background: color-mix(in srgb, currentColor 15%, transparent);
+  border-color: color-mix(in srgb, currentColor 30%, transparent);
+}
+.gl-btn-oauth:active:not(:disabled) { transform: translateY(1px); }
+
+.gl-link { cursor: pointer; transition: opacity .15s ease; }
+.gl-link:hover { opacity: 1; }
+`
+
 function SplashScreen() {
   return (
     <div class="h-dvh w-screen flex flex-col items-center justify-center bg-background-base">
@@ -12,16 +60,24 @@ function SplashScreen() {
   )
 }
 
-const fieldStyle: JSX.CSSProperties = {
-  border: "1px solid color-mix(in srgb, currentColor 22%, transparent)",
-  background: "transparent",
-  color: "inherit",
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true" class="shrink-0">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.28-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
+  )
 }
 
-const primaryButtonStyle: JSX.CSSProperties = {
-  border: "1px solid color-mix(in srgb, currentColor 30%, transparent)",
-  background: "color-mix(in srgb, currentColor 12%, transparent)",
-  color: "inherit",
+function TelegramIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="#29a9eb" class="shrink-0">
+      <path d="M21.94 4.66a1 1 0 0 0-1.06-.14L3.4 11.84c-.85.35-.83 1.58.04 1.9l4.32 1.47 1.64 5.05c.2.6.95.78 1.4.33l2.4-2.37 4.35 3.2c.5.37 1.22.1 1.37-.51l3.02-15.18a1 1 0 0 0-.0-.55 1 1 0 0 0-.0-.0z" />
+      <path d="M9.9 14.7l8.2-5.06c.16-.1.33.12.19.24l-6.62 6.06c-.23.21-.38.5-.42.81l-.23 1.96-1.1-3.74z" fill="#ffffff" opacity="0.0" />
+    </svg>
+  )
 }
 
 const dividerStyle: JSX.CSSProperties = {
@@ -82,7 +138,7 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
 
     const mail = email().trim()
     if (!mail || !password()) {
-      setError("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 email \u0438 \u043f\u0430\u0440\u043e\u043b\u044c")
+      setError("Введите email и пароль")
       return
     }
 
@@ -129,7 +185,7 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
         }
       }
       if (!cancelled) {
-        setError("\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c \u0432\u0445\u043e\u0434 \u0447\u0435\u0440\u0435\u0437 Telegram. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437.")
+        setError("Не удалось подтвердить вход через Telegram. Попробуйте ещё раз.")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -140,15 +196,14 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
 
   return (
     <div class="h-dvh w-screen flex flex-col items-center justify-center bg-background-base px-6">
+      <style>{LOGIN_CSS}</style>
       <form class="w-full max-w-sm flex flex-col gap-5" onSubmit={submit}>
         <div class="flex flex-col items-center gap-3">
           <Splash class="w-12 h-14 opacity-90" />
           <div class="text-center">
             <div class="text-lg font-semibold">Gloam Desktop</div>
             <div class="text-sm opacity-60">
-              {isRegister()
-                ? "\u0421\u043e\u0437\u0434\u0430\u0439\u0442\u0435 \u0430\u043a\u043a\u0430\u0443\u043d\u0442 Gloam"
-                : "\u0412\u043e\u0439\u0434\u0438\u0442\u0435 \u0432 \u0430\u043a\u043a\u0430\u0443\u043d\u0442 Gloam"}
+              {isRegister() ? "Создайте аккаунт Gloam" : "Войдите в аккаунт Gloam"}
             </div>
           </div>
         </div>
@@ -156,19 +211,17 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
         <div class="flex flex-col gap-3">
           <Show when={isRegister()}>
             <input
-              class="w-full rounded-md px-3 py-2 text-sm outline-none"
-              style={fieldStyle}
+              class="gl-field w-full rounded-md px-3 py-2 text-sm outline-none"
               type="text"
               autocomplete="name"
-              placeholder={"\u0418\u043c\u044f (\u043d\u0435\u043e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u044c\u043d\u043e)"}
+              placeholder="Имя (необязательно)"
               value={firstName()}
               onInput={(e) => setFirstName(e.currentTarget.value)}
               disabled={busy()}
             />
           </Show>
           <input
-            class="w-full rounded-md px-3 py-2 text-sm outline-none"
-            style={fieldStyle}
+            class="gl-field w-full rounded-md px-3 py-2 text-sm outline-none"
             type="email"
             autocomplete="email"
             placeholder="Email"
@@ -177,11 +230,10 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
             disabled={busy()}
           />
           <input
-            class="w-full rounded-md px-3 py-2 text-sm outline-none"
-            style={fieldStyle}
+            class="gl-field w-full rounded-md px-3 py-2 text-sm outline-none"
             type="password"
             autocomplete={isRegister() ? "new-password" : "current-password"}
-            placeholder={"\u041f\u0430\u0440\u043e\u043b\u044c"}
+            placeholder="Пароль"
             value={password()}
             onInput={(e) => setPassword(e.currentTarget.value)}
             disabled={busy()}
@@ -196,44 +248,39 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
 
         <button
           type="submit"
-          class="w-full rounded-md px-3 py-2 text-sm font-medium disabled:opacity-50"
-          style={primaryButtonStyle}
+          class="gl-btn gl-btn-primary w-full rounded-md px-3 py-2 text-sm font-semibold"
           disabled={busy()}
         >
-          {busy()
-            ? "\u2026"
-            : isRegister()
-              ? "\u0417\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u0441\u044f"
-              : "\u0412\u043e\u0439\u0442\u0438"}
+          {busy() ? "…" : isRegister() ? "Зарегистрироваться" : "Войти"}
         </button>
 
         <Show when={googleEnabled() || telegramEnabled()}>
           <div class="flex items-center gap-3 opacity-50">
             <div class="h-px flex-1" style={dividerStyle} />
-            <span class="text-xs">{"\u0438\u043b\u0438"}</span>
+            <span class="text-xs">или</span>
             <div class="h-px flex-1" style={dividerStyle} />
           </div>
           <div class="flex flex-col gap-3">
             <Show when={googleEnabled()}>
               <button
                 type="button"
-                class="w-full rounded-md px-3 py-2 text-sm font-medium disabled:opacity-50"
-                style={primaryButtonStyle}
+                class="gl-btn gl-btn-oauth w-full rounded-md px-3 py-2 text-sm font-medium flex items-center justify-center gap-2"
                 disabled={busy()}
                 onClick={() => void loginViaGoogle()}
               >
-                {"\u0412\u043e\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 Google"}
+                <GoogleIcon />
+                <span>Войти через Google</span>
               </button>
             </Show>
             <Show when={telegramEnabled()}>
               <button
                 type="button"
-                class="w-full rounded-md px-3 py-2 text-sm font-medium disabled:opacity-50"
-                style={primaryButtonStyle}
+                class="gl-btn gl-btn-oauth w-full rounded-md px-3 py-2 text-sm font-medium flex items-center justify-center gap-2"
                 disabled={busy()}
                 onClick={() => void loginViaTelegram()}
               >
-                {"\u0412\u043e\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 Telegram"}
+                <TelegramIcon />
+                <span>Войти через Telegram</span>
               </button>
             </Show>
           </div>
@@ -243,13 +290,13 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
           <Show
             when={isRegister()}
             fallback={
-              <button type="button" class="underline" onClick={() => { setError(null); setMode("register") }}>
-                {"\u041d\u0435\u0442 \u0430\u043a\u043a\u0430\u0443\u043d\u0442\u0430? \u0417\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u0441\u044f"}
+              <button type="button" class="gl-link underline" onClick={() => { setError(null); setMode("register") }}>
+                Нет аккаунта? Зарегистрироваться
               </button>
             }
           >
-            <button type="button" class="underline" onClick={() => { setError(null); setMode("login") }}>
-              {"\u0423\u0436\u0435 \u0435\u0441\u0442\u044c \u0430\u043a\u043a\u0430\u0443\u043d\u0442? \u0412\u043e\u0439\u0442\u0438"}
+            <button type="button" class="gl-link underline" onClick={() => { setError(null); setMode("login") }}>
+              Уже есть аккаунт? Войти
             </button>
           </Show>
         </div>
