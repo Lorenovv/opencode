@@ -76,7 +76,6 @@ export const DialogSettings: Component = () => {
               <Show when={canLogout()}>
                 <div class="px-1">
                   <ButtonV2 size="normal" variant="neutral" onClick={() => void handleLogout()}>
-                    <Icon name="logout" />
                     Выйти из аккаунта
                   </ButtonV2>
                 </div>
