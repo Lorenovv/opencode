@@ -86,7 +86,7 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
               style={fieldStyle}
               type="text"
               autocomplete="name"
-              placeholder="\u0418\u043c\u044f (\u043d\u0435\u043e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u044c\u043d\u043e)"
+              placeholder={"\u0418\u043c\u044f (\u043d\u0435\u043e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u044c\u043d\u043e)"}
               value={firstName()}
               onInput={(e) => setFirstName(e.currentTarget.value)}
               disabled={busy()}
@@ -107,7 +107,7 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
             style={fieldStyle}
             type="password"
             autocomplete={isRegister() ? "new-password" : "current-password"}
-            placeholder="\u041f\u0430\u0440\u043e\u043b\u044c"
+            placeholder={"\u041f\u0430\u0440\u043e\u043b\u044c"}
             value={password()}
             onInput={(e) => setPassword(e.currentTarget.value)}
             disabled={busy()}
