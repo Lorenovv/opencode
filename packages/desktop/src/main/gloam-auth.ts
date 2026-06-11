@@ -198,14 +198,21 @@ export async function config(): Promise<GloamAuthConfig> {
 //     The OS hands that deep link to the app; the renderer forwards it to
 //     applyDeepLinkSession().
 //
-//   * Telegram: opens the bot start link t.me/<bot>?start=desktop_<state>. The
-//     bot resolves the account and stashes it against <state>; the renderer
-//     then polls pollTelegramExchange(state) which claims the session via the
+//   * Telegram: opens the bot start link for ?start=desktop_<state>. The bot
+//     resolves the account and stashes it against <state>; the renderer then
+//     polls pollTelegramExchange(state) which claims the session via the
 //     existing /auth/telegram/exchange endpoint. (Telegram won't linkify a
 //     custom opencode:// scheme, so there is no deep link for this flow.)
 
 const DEEP_LINK_AUTH_ROUTE = "auth/callback"
 const TELEGRAM_LINK_BASE = "https://t.me/"
+// Native Telegram scheme. Preferred over the https t.me link because, for a bot
+// that has already been started (always true for returning users), the https
+// link tends to just focus the existing chat and silently drop the ?start
+// payload — so the bot receives a bare /start and replies with the generic
+// greeting instead of completing the desktop login. tg://resolve delivers the
+// start parameter to the installed client reliably.
+const TELEGRAM_NATIVE_BASE = "tg://resolve?domain="
 
 export function googleStartUrl(): string {
 	return `${apiBase()}/auth/desktop/google/start`
@@ -230,10 +237,25 @@ export async function startTelegramLogin(): Promise<{ url: string; state: string
 		)
 	}
 	const state = randomBytes(18).toString("base64url")
-	const url =
-		TELEGRAM_LINK_BASE + encodeURIComponent(username) + "?start=desktop_" + state
-	await shell.openExternal(url)
-	return { url, state }
+	const startParam = "desktop_" + state
+	const encodedUsername = encodeURIComponent(username)
+	const nativeUrl = TELEGRAM_NATIVE_BASE + encodedUsername + "&start=" + startParam
+	const webUrl = TELEGRAM_LINK_BASE + encodedUsername + "?start=" + startParam
+	// Try the native client first; only fall back to the https link (Telegram
+	// Web / install page) when there is no handler for the tg:// scheme.
+	try {
+		await shell.openExternal(nativeUrl)
+		return { url: nativeUrl, state }
+	} catch (error) {
+		writeLog(
+			"gloam-auth",
+			"tg:// open failed, falling back to https t.me link",
+			{ error: String(error) },
+			"warn",
+		)
+		await shell.openExternal(webUrl)
+		return { url: webUrl, state }
+	}
 }
 
 export async function pollTelegramExchange(state: string): Promise<GloamSession | null> {
