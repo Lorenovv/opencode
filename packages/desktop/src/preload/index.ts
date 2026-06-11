@@ -63,6 +63,7 @@ const api: ElectronAPI = {
     me: () => ipcRenderer.invoke("gloam-auth-me"),
     logout: () => ipcRenderer.invoke("gloam-auth-logout"),
     hasToken: () => ipcRenderer.invoke("gloam-auth-has-token"),
+    getToken: () => ipcRenderer.invoke("gloam-auth-token"),
   },
   consumeInitialDeepLinks: () => ipcRenderer.invoke("consume-initial-deep-links"),
   getDefaultServerUrl: () => ipcRenderer.invoke("get-default-server-url"),
