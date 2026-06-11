@@ -4,6 +4,7 @@ import {
   ACCEPTED_FILE_EXTENSIONS,
   AppBaseProviders,
   AppInterface,
+  GloamProviderSync,
   handleNotificationClick,
   loadLocaleDict,
   normalizeLocale,
@@ -362,6 +363,7 @@ render(() => {
         <Show when={effectiveDefaultServer()} keyed>
           {(key) => (
             <AppInterface defaultServer={key} servers={servers()} router={MemoryRouter}>
+              <GloamProviderSync />
               <Inner />
             </AppInterface>
           )}
