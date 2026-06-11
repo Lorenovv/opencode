@@ -1,5 +1,5 @@
 import { Splash } from "@opencode-ai/ui/logo"
-import { createResource, createSignal, Show, type JSX } from "solid-js"
+import { createResource, createSignal, onCleanup, Show, type JSX } from "solid-js"
 import type { GloamLoginRequest } from "../../preload/types"
 
 type Mode = "login" | "register"
@@ -36,7 +36,40 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
   const [busy, setBusy] = createSignal(false)
   const [error, setError] = createSignal<string | null>(null)
 
+  const [config] = createResource(() => window.api.gloamAuth.config())
+  const googleEnabled = () => config()?.google_redirect_enabled === true
+  const telegramEnabled = () => {
+    const cfg = config()
+    const raw = cfg?.bot_username ?? cfg?.telegramBotUsername
+    return typeof raw === "string" && raw.trim().length > 0
+  }
+
   const isRegister = () => mode() === "register"
+
+  // The component may unmount mid-flow (e.g. once authenticated); guard the
+  // Telegram polling loop so it stops instead of calling onAuthenticated twice.
+  let cancelled = false
+  onCleanup(() => {
+    cancelled = true
+  })
+
+  // Google bounces the session back through an opencode:// deep link rather than
+  // a direct response, so we listen for it here and finish the login.
+  const handleDeepLinks = async (urls: string[]) => {
+    for (const url of urls) {
+      try {
+        const session = await window.api.gloamAuth.applyDeepLink(url)
+        if (session) {
+          props.onAuthenticated()
+          return
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err))
+      }
+    }
+  }
+  const unsubscribe = window.api.onDeepLink((urls) => void handleDeepLinks(urls))
+  onCleanup(unsubscribe)
 
   const submit = async (event: Event) => {
     event.preventDefault()
@@ -57,6 +90,43 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
     try {
       await window.api.gloamAuth.login(request)
       props.onAuthenticated()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const loginViaGoogle = async () => {
+    if (busy()) return
+    setError(null)
+    try {
+      await window.api.gloamAuth.startGoogle()
+      // The session arrives via the deep-link listener above.
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  const loginViaTelegram = async () => {
+    if (busy()) return
+    setError(null)
+    setBusy(true)
+    try {
+      const { state } = await window.api.gloamAuth.startTelegram()
+      const deadline = Date.now() + 3 * 60 * 1000
+      while (!cancelled && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 2500))
+        if (cancelled) return
+        const session = await window.api.gloamAuth.pollTelegram(state)
+        if (session) {
+          props.onAuthenticated()
+          return
+        }
+      }
+      if (!cancelled) {
+        setError("\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c \u0432\u0445\u043e\u0434 \u0447\u0435\u0440\u0435\u0437 Telegram. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437.")
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -132,6 +202,38 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
               ? "\u0417\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u0441\u044f"
               : "\u0412\u043e\u0439\u0442\u0438"}
         </button>
+
+        <Show when={googleEnabled() || telegramEnabled()}>
+          <div class="flex items-center gap-3 opacity-50">
+            <div class="h-px flex-1" style= background: "currentColor"  />
+            <span class="text-xs">{"\u0438\u043b\u0438"}</span>
+            <div class="h-px flex-1" style= background: "currentColor"  />
+          </div>
+          <div class="flex flex-col gap-3">
+            <Show when={googleEnabled()}>
+              <button
+                type="button"
+                class="w-full rounded-md px-3 py-2 text-sm font-medium disabled:opacity-50"
+                style={primaryButtonStyle}
+                disabled={busy()}
+                onClick={() => void loginViaGoogle()}
+              >
+                {"\u0412\u043e\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 Google"}
+              </button>
+            </Show>
+            <Show when={telegramEnabled()}>
+              <button
+                type="button"
+                class="w-full rounded-md px-3 py-2 text-sm font-medium disabled:opacity-50"
+                style={primaryButtonStyle}
+                disabled={busy()}
+                onClick={() => void loginViaTelegram()}
+              >
+                {"\u0412\u043e\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 Telegram"}
+              </button>
+            </Show>
+          </div>
+        </Show>
 
         <div class="text-center text-sm opacity-70">
           <Show
