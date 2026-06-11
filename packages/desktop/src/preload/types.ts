@@ -40,12 +40,54 @@ export type FatalRendererError = {
   os?: string
 }
 
+// Gloam account auth. This is a SEPARATE session from the website cookie
+// session: the desktop app always authenticates with a bearer token issued by
+// the backend for `X-Gloam-Client: desktop` requests.
+export type GloamLoginRequest =
+  | { method: "email-login"; email: string; password: string }
+  | { method: "email-register"; email: string; password: string; firstName?: string }
+  | { method: "google"; credential: string }
+  | { method: "telegram"; payload: Record<string, unknown> }
+
+export type GloamSession = {
+  ok: true
+  tgId: number
+  token: string
+  expiresAtUnix: number
+}
+
+export type GloamMe = {
+  authenticated: boolean
+  tgId?: number
+  firstName?: string
+  username?: string
+  email?: string
+  authProvider?: string
+  status?: Record<string, unknown>
+}
+
+export type GloamAuthConfig = {
+  googleClientId?: string
+  telegramBotUsername?: string
+  emailVerificationRequired?: boolean
+  [key: string]: unknown
+}
+
+export type GloamAuthAPI = {
+  config: () => Promise<GloamAuthConfig>
+  login: (req: GloamLoginRequest) => Promise<GloamSession>
+  me: () => Promise<GloamMe>
+  logout: () => Promise<void>
+  hasToken: () => Promise<boolean>
+}
+
 export type ElectronAPI = {
   killSidecar: () => Promise<void>
   installCli: () => Promise<string>
   awaitInitialization: () => Promise<ServerReadyData>
   wslServers: WslServersAPI
   updater: UpdaterAPI
+  gloamAuth: GloamAuthAPI
   consumeInitialDeepLinks: () => Promise<string[]>
   getDefaultServerUrl: () => Promise<string | null>
   setDefaultServerUrl: (url: string | null) => Promise<void>
