@@ -16,6 +16,19 @@
 }
 
 @layer components {
+  /* Gloam brand backdrop: a subtle purple -> cyan gradient layered on top of
+     the theme's solid background color. It targets the deep page-level
+     backgrounds only, applies automatically (no theme JSON change needed), and
+     stays fixed so it reads as a single ambient canvas behind the app. */
+  .bg-background-base,
+  .bg-v2-background-bg-deep {
+    background-image:
+      radial-gradient(1200px 760px at 0% -8%, color-mix(in oklab, #7c5cff 16%, transparent), transparent 58%),
+      radial-gradient(1100px 720px at 108% 112%, color-mix(in oklab, #38bdf8 12%, transparent), transparent 55%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+
   @keyframes session-progress-whip {
     0% {
       clip-path: inset(0 100% 0 0 round 999px);
