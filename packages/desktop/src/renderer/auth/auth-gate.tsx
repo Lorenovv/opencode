@@ -24,6 +24,10 @@ const primaryButtonStyle: JSX.CSSProperties = {
   color: "inherit",
 }
 
+const dividerStyle: JSX.CSSProperties = {
+  background: "currentColor",
+}
+
 const errorStyle: JSX.CSSProperties = {
   color: "#f87171",
 }
@@ -205,9 +209,9 @@ function LoginScreen(props: { onAuthenticated: () => void }) {
 
         <Show when={googleEnabled() || telegramEnabled()}>
           <div class="flex items-center gap-3 opacity-50">
-            <div class="h-px flex-1" style= background: "currentColor"  />
+            <div class="h-px flex-1" style={dividerStyle} />
             <span class="text-xs">{"\u0438\u043b\u0438"}</span>
-            <div class="h-px flex-1" style= background: "currentColor"  />
+            <div class="h-px flex-1" style={dividerStyle} />
           </div>
           <div class="flex flex-col gap-3">
             <Show when={googleEnabled()}>
