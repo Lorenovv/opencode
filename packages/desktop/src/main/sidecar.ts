@@ -1,4 +1,5 @@
 import * as http from "node:http"
+import { join } from "node:path"
 import * as tls from "node:tls"
 
 type NodeHttpWithEnvProxy = typeof http & {
@@ -81,10 +82,19 @@ async function stop() {
 }
 
 function prepareSidecarEnv(password: string, userDataPath: string) {
+  // Keep Gloam independent from a locally installed OpenCode: pin every XDG
+  // base dir to Gloam-specific subfolders of the app userData path so the
+  // embedded opencode server never reads/writes the shared
+  // ~/.local/share/opencode (auth.json, config, custom providers, cache).
+  // Override unconditionally because the spawning process copies the shell
+  // environment, which may already carry XDG_* from a real OpenCode install.
   Object.assign(process.env, {
     OPENCODE_SERVER_USERNAME: "opencode",
     OPENCODE_SERVER_PASSWORD: password,
-    XDG_STATE_HOME: process.env.XDG_STATE_HOME ?? userDataPath,
+    XDG_DATA_HOME: join(userDataPath, "data"),
+    XDG_CONFIG_HOME: join(userDataPath, "config"),
+    XDG_CACHE_HOME: join(userDataPath, "cache"),
+    XDG_STATE_HOME: join(userDataPath, "state"),
   })
 }
 
