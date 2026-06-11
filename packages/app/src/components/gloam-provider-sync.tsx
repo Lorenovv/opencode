@@ -5,18 +5,28 @@ import { useServerSync } from "@/context/server-sync"
 // The Gloam gateway exposes a `gloam` provider via its
 // /.well-known/opencode document. We connect it automatically using the signed
 // Gloam session token as the key, so users never have to paste an API key for
-// the managed provider. The provider only appears in the provider list and
-// model picker once `auth.set` has run AND the client provider snapshot has
-// been refetched, which is why we trigger an explicit refetch at boot.
+// the managed provider.
+//
+// Connecting is a two-step dance on the sidecar: `auth.set` writes the
+// credential, then `global.dispose()` makes the server reload its provider
+// catalog from the well-known document. That reload is asynchronous, so a
+// single refetch right after dispose can race ahead of it and miss Gloam. We
+// therefore re-check the provider snapshot a few times until Gloam shows up.
 const GLOAM_GATEWAY_URL = "https://gloam-gateway.vercel.app"
 const GLOAM_WELLKNOWN_ENV = "GLOAM_API_KEY"
+const GLOAM_PROVIDER_ID = "gloam"
 
 // Native opencode providers that ship in the catalog without authentication.
 // Gloam is its own product (a fork), so we always hide these. Users either use
 // the managed Gloam provider or bring their own key via a custom provider.
 const HIDDEN_NATIVE_PROVIDERS = ["opencode", "opencode-go"]
 
+const RECONNECT_ATTEMPTS = 8
+const RECONNECT_DELAY_MS = 750
+
 type GloamBridge = { gloamAuth?: { getToken?: () => Promise<string | null> } }
+
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 // Desktop-only: once the user has a Gloam session, wire up the Gloam provider
 // and hide the native opencode catalog. On web (no desktop bridge) we still
@@ -39,26 +49,46 @@ export function GloamProviderSync() {
         }
       }
 
-      try {
-        // Connect the managed Gloam provider using the signed session token.
-        if (token) {
-          await serverSDK.client.auth.set({
-            providerID: GLOAM_GATEWAY_URL,
-            auth: { type: "wellknown", key: GLOAM_WELLKNOWN_ENV, token },
-          })
-          await serverSDK.client.global.dispose()
-        }
+      const gloamConnected = () => {
+        const all = serverSync.data.provider.all
+        return typeof all?.has === "function" ? all.has(GLOAM_PROVIDER_ID) : false
+      }
 
-        // Hide the native opencode providers and force a provider refetch. This
-        // runs after auth.set so the refetched provider snapshot already
-        // includes Gloam. updateConfig's onSuccess invalidates the provider
-        // queries, so Gloam appears immediately without a manual restart.
+      // Compute the disabled_providers list; reused as a cheap way to force a
+      // provider refetch, since updateConfig invalidates the provider query.
+      const hideNatives = () => {
         const before = serverSync.data.config.disabled_providers ?? []
         const next = [...before]
         for (const id of HIDDEN_NATIVE_PROVIDERS) {
           if (!next.includes(id)) next.push(id)
         }
-        await serverSync.updateConfig({ disabled_providers: next })
+        return next
+      }
+
+      try {
+        // Always hide the native opencode providers, even on web / logged out.
+        await serverSync.updateConfig({ disabled_providers: hideNatives() })
+
+        // Without a session token we cannot connect the managed provider; the
+        // user can still paste a key manually or add their own provider.
+        if (!token) return
+
+        // Already connected (e.g. relaunch with a cached catalog) — done.
+        if (gloamConnected()) return
+
+        // Write the credential, then reload the server's provider catalog.
+        await serverSDK.client.auth.set({
+          providerID: GLOAM_GATEWAY_URL,
+          auth: { type: "wellknown", key: GLOAM_WELLKNOWN_ENV, token },
+        })
+        await serverSDK.client.global.dispose()
+
+        // The dispose-triggered reload is async; nudge the provider snapshot
+        // until Gloam appears or we run out of attempts.
+        for (let attempt = 0; attempt < RECONNECT_ATTEMPTS && !gloamConnected(); attempt++) {
+          await delay(RECONNECT_DELAY_MS)
+          await serverSync.updateConfig({ disabled_providers: hideNatives() })
+        }
       } catch {
         // Best effort: the provider can still be connected manually in Settings.
       }
