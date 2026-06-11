@@ -73,10 +73,17 @@ export function GloamProviderSync() {
         // user can still paste a key manually or add their own provider.
         if (!token) return
 
-        // Already connected (e.g. relaunch with a cached catalog) — done.
-        if (gloamConnected()) return
-
-        // Write the credential, then reload the server's provider catalog.
+        // Always (re)write the credential with the *current* session token and
+        // reload the catalog -- even if Gloam already appears connected.
+        //
+        // The sidecar persists the previously-written credential in its own
+        // auth store (separate from the desktop's token store). If we skip this
+        // when already connected, a rotated token is never propagated: after a
+        // re-login or a backend signing-secret change the sidecar keeps sending
+        // the stale token, and every chat request fails the gateway's offline
+        // verification with "Invalid or inactive Gloam session". Re-setting the
+        // credential on each launch keeps the sidecar in sync with the latest
+        // token. `auth.set` is idempotent, so this is a no-op when unchanged.
         await serverSDK.client.auth.set({
           providerID: GLOAM_GATEWAY_URL,
           auth: { type: "wellknown", key: GLOAM_WELLKNOWN_ENV, token },
