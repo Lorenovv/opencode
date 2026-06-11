@@ -21,6 +21,7 @@ import { MemoryRouter } from "@solidjs/router"
 import { createEffect, createMemo, createResource, createSignal, onCleanup, onMount, Show } from "solid-js"
 import { render } from "solid-js/web"
 import pkg from "../../package.json"
+import { AuthGate } from "./auth/auth-gate"
 import { initI18n, t } from "./i18n"
 import { initializationData, initializationReady } from "./initialization"
 import { resetZoom, setPinchZoomEnabled, webviewZoom, zoomIn, zoomOut } from "./webview-zoom"
@@ -379,7 +380,11 @@ render(() => {
   return (
     <PlatformProvider value={platform}>
       <AppBaseProviders locale={locale.latest}>
-        <Show when={true}>{(_) => <App />}</Show>
+        <Show when={true}>{(_) => (
+          <AuthGate>
+            <App />
+          </AuthGate>
+        )}</Show>
       </AppBaseProviders>
     </PlatformProvider>
   )
