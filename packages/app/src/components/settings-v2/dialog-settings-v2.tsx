@@ -1,4 +1,4 @@
-import { Component, Show } from "solid-js"
+import { Component, Show, createResource } from "solid-js"
 import { Dialog } from "@opencode-ai/ui/v2/dialog-v2"
 import { TabsV2 } from "@opencode-ai/ui/v2/tabs-v2"
 import { Icon } from "@opencode-ai/ui/icon"
@@ -12,7 +12,17 @@ import { SettingsModelsV2 } from "./models"
 import "./settings-v2.css"
 import { SettingsServersV2 } from "./servers"
 
-type DesktopApi = { gloamAuth?: { logout?: () => Promise<unknown> } }
+type GloamMe = {
+  authenticated: boolean
+  firstName?: string
+  username?: string
+  email?: string
+}
+
+type DesktopApi = {
+  gloamAuth?: { logout?: () => Promise<unknown>; me?: () => Promise<GloamMe> }
+  relaunch?: () => void
+}
 
 const desktopApi = (): DesktopApi | undefined =>
   typeof window === "undefined" ? undefined : (window as unknown as { api?: DesktopApi }).api
@@ -23,11 +33,40 @@ export const DialogSettings: Component = () => {
 
   const canLogout = () => !!desktopApi()?.gloamAuth?.logout
 
+  // Load the signed-in account so the sidebar can show name + email like the web app.
+  const [account] = createResource(async () => {
+    const api = desktopApi()
+    if (!api?.gloamAuth?.me) return null
+    try {
+      return await api.gloamAuth.me()
+    } catch {
+      return null
+    }
+  })
+
+  const accountName = () => {
+    const me = account()
+    if (!me) return ""
+    return me.firstName || me.username || me.email || ""
+  }
+
+  const accountInitial = () => {
+    const name = accountName().trim()
+    return name ? name[0].toUpperCase() : "?"
+  }
+
   const handleLogout = async () => {
     try {
       await desktopApi()?.gloamAuth?.logout?.()
     } catch {
-      // ignore logout failures and fall through to reload
+      // ignore logout failures and fall through to relaunch/reload
+    }
+    // A full relaunch restarts the sidecar so the cleared Gloam credential
+    // actually takes effect; reload only as a fallback when relaunch is missing.
+    const api = desktopApi()
+    if (api?.relaunch) {
+      api.relaunch()
+      return
     }
     if (typeof window !== "undefined") window.location.reload()
   }
@@ -74,9 +113,22 @@ export const DialogSettings: Component = () => {
             </div>
             <div class="flex flex-col gap-2">
               <Show when={canLogout()}>
-                <div class="px-1">
+                <div class="flex items-center gap-2 px-1 py-1">
+                  <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/10 text-sm font-medium">
+                    {accountInitial()}
+                  </div>
+                  <div class="flex flex-col min-w-0 flex-1 leading-tight">
+                    <span class="text-sm font-medium truncate">
+                      <Show when={accountName()} fallback={language.t("app.name.desktop")}>
+                        {accountName()}
+                      </Show>
+                    </span>
+                    <Show when={account()?.email}>
+                      <span class="text-xs opacity-60 truncate">{account()?.email}</span>
+                    </Show>
+                  </div>
                   <ButtonV2 size="normal" variant="neutral" onClick={() => void handleLogout()}>
-                    Выйти из аккаунта
+                    Выйти
                   </ButtonV2>
                 </div>
               </Show>
