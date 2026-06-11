@@ -66,10 +66,18 @@ export type GloamMe = {
   status?: Record<string, unknown>
 }
 
+// The backend /auth/config endpoint returns snake_case keys. We keep the older
+// camelCase aliases too so nothing that referenced them breaks, but new code
+// should read the snake_case fields.
 export type GloamAuthConfig = {
   googleClientId?: string
   telegramBotUsername?: string
   emailVerificationRequired?: boolean
+  bot_username?: string
+  google_client_id?: string
+  google_login_enabled?: boolean
+  google_redirect_enabled?: boolean
+  email_verification_required?: boolean
   [key: string]: unknown
 }
 
@@ -80,6 +88,15 @@ export type GloamAuthAPI = {
   logout: () => Promise<void>
   hasToken: () => Promise<boolean>
   getToken: () => Promise<string | null>
+  // Opens the system browser at the desktop Google start endpoint; the session
+  // returns via an opencode:// deep link handled by applyDeepLink.
+  startGoogle: () => Promise<string>
+  // Opens t.me/<bot>?start=desktop_<state> and returns the state to poll.
+  startTelegram: () => Promise<{ url: string; state: string }>
+  // One poll attempt against /auth/telegram/exchange; null while pending.
+  pollTelegram: (state: string) => Promise<GloamSession | null>
+  // Parses an opencode://auth/callback deep link and stores the session.
+  applyDeepLink: (url: string) => Promise<GloamSession | null>
 }
 
 export type ElectronAPI = {
