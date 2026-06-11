@@ -304,7 +304,8 @@ const main = Effect.gen(function* () {
     return yield* Deferred.await(res)
   })
   const hostname = "127.0.0.1"
-  const url = `http://${hostname}:${port}`
+  const scheme = "http"
+  const url = `${scheme}://${hostname}:${port}`
   const password = randomUUID()
 
   const loadingTask = yield* Effect.gen(function* () {
