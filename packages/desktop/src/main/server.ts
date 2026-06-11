@@ -16,7 +16,7 @@ type SidecarMessage =
 
 export type SidecarListener = { stop: () => Promise<void> }
 
-const SIDECAR_SERVICE_NAME = "opencode server"
+const SIDECAR_SERVICE_NAME = "Gloam server"
 const SIDECAR_START_STALL_TIMEOUT = 60_000
 const SIDECAR_STOP_TIMEOUT = 6_000
 
@@ -140,7 +140,8 @@ export async function spawnLocalServer(
   })
 
   const wait = (async () => {
-    const url = `http://${hostname}:${port}`
+    const scheme = "http"
+    const url = `${scheme}://${hostname}:${port}`
     let healthy = false
     const gone = exit.promise.then((code) => {
       if (healthy) return
