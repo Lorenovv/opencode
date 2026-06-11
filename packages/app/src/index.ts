@@ -21,3 +21,4 @@ export {
 } from "./wsl/types"
 export { ServerConnection } from "./context/server"
 export { handleNotificationClick } from "./utils/notification-click"
+export { GloamProviderSync } from "./components/gloam-provider-sync"
