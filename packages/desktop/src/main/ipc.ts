@@ -76,7 +76,7 @@ export function registerIpcHandlers(deps: Deps) {
   ipcMain.handle("gloam-auth-login", (_event: IpcMainInvokeEvent, req: GloamLoginRequest) => gloamAuth.login(req))
   ipcMain.handle("gloam-auth-me", () => gloamAuth.me())
   ipcMain.handle("gloam-auth-logout", () => {
-    gloamAuth.clearSession()
+    gloamAuth.logout()
   })
   ipcMain.handle("gloam-auth-has-token", () => gloamAuth.getStoredToken() != null)
   ipcMain.handle("gloam-auth-token", () => gloamAuth.getStoredToken())
