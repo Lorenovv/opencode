@@ -3,13 +3,11 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { Tag } from "@opencode-ai/ui/tag"
 import { showToast } from "@/utils/toast"
-import { popularProviders, useProviders } from "@/hooks/use-providers"
+import { useProviders } from "@/hooks/use-providers"
 import { createMemo, type Component, For, Show } from "solid-js"
 import { useLanguage } from "@/context/language"
 import { useServerSDK } from "@/context/server-sdk"
 import { useServerSync } from "@/context/server-sync"
-import { DialogConnectProvider } from "./dialog-connect-provider"
-import { DialogSelectProvider } from "./dialog-select-provider"
 import { DialogCustomProvider } from "./dialog-custom-provider"
 import { SettingsList } from "./settings-list"
 import { SettingsServerPicker, SettingsServerScope } from "./settings-server-picker"
@@ -17,16 +15,7 @@ import { SettingsServerPicker, SettingsServerScope } from "./settings-server-pic
 type ProviderSource = "env" | "api" | "config" | "custom"
 type ProviderItem = ReturnType<ReturnType<typeof useProviders>["connected"]>[number]
 
-const PROVIDER_NOTES = [
-  { match: (id: string) => id === "opencode", key: "dialog.provider.opencode.note" },
-  { match: (id: string) => id === "opencode-go", key: "dialog.provider.opencodeGo.tagline" },
-  { match: (id: string) => id === "anthropic", key: "dialog.provider.anthropic.note" },
-  { match: (id: string) => id.startsWith("github-copilot"), key: "dialog.provider.copilot.note" },
-  { match: (id: string) => id === "openai", key: "dialog.provider.openai.note" },
-  { match: (id: string) => id === "google", key: "dialog.provider.google.note" },
-  { match: (id: string) => id === "openrouter", key: "dialog.provider.openrouter.note" },
-  { match: (id: string) => id === "vercel", key: "dialog.provider.vercel.note" },
-] as const
+const GLOAM_PROVIDER_ID = "gloam"
 
 export const SettingsProviders: Component = () => {
   return (
@@ -43,22 +32,6 @@ const SettingsProvidersContent: Component = () => {
   const serverSync = useServerSync()
   const providers = useProviders()
 
-  const connected = createMemo(() => {
-    return providers
-      .connected()
-      .filter((p) => p.id !== "opencode" || Object.values(p.models).find((m) => m.cost?.input))
-  })
-
-  const popular = createMemo(() => {
-    const connectedIDs = new Set(connected().map((p) => p.id))
-    const items = providers
-      .popular()
-      .filter((p) => !connectedIDs.has(p.id))
-      .slice()
-    items.sort((a, b) => popularProviders.indexOf(a.id) - popularProviders.indexOf(b.id))
-    return items
-  })
-
   const source = (item: ProviderItem): ProviderSource | undefined => {
     if (!("source" in item)) return
     const value = item.source
@@ -66,7 +39,24 @@ const SettingsProvidersContent: Component = () => {
     return
   }
 
+  const isConfigCustom = (providerID: string) => {
+    const provider = serverSync.data.config.provider?.[providerID]
+    if (!provider) return false
+    if (provider.npm !== "@ai-sdk/openai-compatible") return false
+    if (!provider.models || Object.keys(provider.models).length === 0) return false
+    return true
+  }
+
+  // Gloam fork: only surface the managed Gloam provider and the user's own
+  // (custom / BYO) providers. The native opencode catalog is intentionally
+  // hidden so users either use Gloam or bring their own key.
+  const isAllowed = (item: ProviderItem) =>
+    item.id === GLOAM_PROVIDER_ID || source(item) === "custom" || isConfigCustom(item.id)
+
+  const connected = createMemo(() => providers.connected().filter(isAllowed))
+
   const type = (item: ProviderItem) => {
+    if (item.id === GLOAM_PROVIDER_ID) return language.t("settings.providers.tag.other")
     const current = source(item)
     if (current === "env") return language.t("settings.providers.tag.environment")
     if (current === "api") return language.t("provider.connect.method.apiKey")
@@ -78,17 +68,9 @@ const SettingsProvidersContent: Component = () => {
     return language.t("settings.providers.tag.other")
   }
 
-  const canDisconnect = (item: ProviderItem) => source(item) !== "env"
-
-  const note = (id: string) => PROVIDER_NOTES.find((item) => item.match(id))?.key
-
-  const isConfigCustom = (providerID: string) => {
-    const provider = serverSync.data.config.provider?.[providerID]
-    if (!provider) return false
-    if (provider.npm !== "@ai-sdk/openai-compatible") return false
-    if (!provider.models || Object.keys(provider.models).length === 0) return false
-    return true
-  }
+  // The managed Gloam provider is connected automatically and cannot be
+  // disconnected from here; environment-provided providers are also fixed.
+  const canDisconnect = (item: ProviderItem) => item.id !== GLOAM_PROVIDER_ID && source(item) !== "env"
 
   const disableProvider = async (providerID: string, name: string) => {
     const before = serverSync.data.config.disabled_providers ?? []
@@ -164,14 +146,7 @@ const SettingsProvidersContent: Component = () => {
                       <span class="text-14-medium text-text-strong truncate">{item.name}</span>
                       <Tag>{type(item)}</Tag>
                     </div>
-                    <Show
-                      when={canDisconnect(item)}
-                      fallback={
-                        <span class="text-14-regular text-text-base opacity-0 group-hover:opacity-100 transition-opacity duration-200 pr-3 cursor-default">
-                          {language.t("settings.providers.connected.environmentDescription")}
-                        </span>
-                      }
-                    >
+                    <Show when={canDisconnect(item)}>
                       <Button size="large" variant="ghost" onClick={() => void disconnect(item.id, item.name)}>
                         {language.t("common.disconnect")}
                       </Button>
@@ -184,40 +159,7 @@ const SettingsProvidersContent: Component = () => {
         </div>
 
         <div class="flex flex-col gap-1">
-          <h3 class="text-14-medium text-text-strong pb-2">{language.t("settings.providers.section.popular")}</h3>
           <SettingsList>
-            <For each={popular()}>
-              {(item) => (
-                <div class="flex flex-wrap items-center justify-between gap-4 min-h-16 py-3 border-b border-border-weak-base last:border-none">
-                  <div class="flex flex-col min-w-0">
-                    <div class="flex items-center gap-x-3">
-                      <ProviderIcon id={item.id} class="size-5 shrink-0 icon-strong-base" />
-                      <span class="text-14-medium text-text-strong">{item.name}</span>
-                      <Show when={item.id === "opencode"}>
-                        <Tag>{language.t("dialog.provider.tag.recommended")}</Tag>
-                      </Show>
-                      <Show when={item.id === "opencode-go"}>
-                        <Tag>{language.t("dialog.provider.tag.recommended")}</Tag>
-                      </Show>
-                    </div>
-                    <Show when={note(item.id)}>
-                      {(key) => <span class="text-12-regular text-text-weak pl-8">{language.t(key())}</span>}
-                    </Show>
-                  </div>
-                  <Button
-                    size="large"
-                    variant="secondary"
-                    icon="plus-small"
-                    onClick={() => {
-                      dialog.show(() => <DialogConnectProvider provider={item.id} />)
-                    }}
-                  >
-                    {language.t("common.connect")}
-                  </Button>
-                </div>
-              )}
-            </For>
-
             <div
               class="flex items-center justify-between gap-4 min-h-16 border-b border-border-weak-base last:border-none flex-wrap py-3"
               data-component="custom-provider-section"
@@ -244,16 +186,6 @@ const SettingsProvidersContent: Component = () => {
               </Button>
             </div>
           </SettingsList>
-
-          <Button
-            variant="ghost"
-            class="px-0 py-0 mt-5 text-14-medium text-text-interactive-base text-left justify-start hover:bg-transparent active:bg-transparent"
-            onClick={() => {
-              dialog.show(() => <DialogSelectProvider />)
-            }}
-          >
-            {language.t("dialog.provider.viewAll")}
-          </Button>
         </div>
       </div>
     </div>
