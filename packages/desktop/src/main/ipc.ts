@@ -80,6 +80,14 @@ export function registerIpcHandlers(deps: Deps) {
   })
   ipcMain.handle("gloam-auth-has-token", () => gloamAuth.getStoredToken() != null)
   ipcMain.handle("gloam-auth-token", () => gloamAuth.getStoredToken())
+  ipcMain.handle("gloam-auth-start-google", () => gloamAuth.startGoogleLogin())
+  ipcMain.handle("gloam-auth-start-telegram", () => gloamAuth.startTelegramLogin())
+  ipcMain.handle("gloam-auth-telegram-poll", (_event: IpcMainInvokeEvent, state: string) =>
+    gloamAuth.pollTelegramExchange(state),
+  )
+  ipcMain.handle("gloam-auth-apply-deep-link", (_event: IpcMainInvokeEvent, url: string) =>
+    gloamAuth.applyDeepLinkSession(url),
+  )
   ipcMain.handle("set-background-color", (_event: IpcMainInvokeEvent, color: string) => deps.setBackgroundColor(color))
   ipcMain.handle("export-debug-logs", () => deps.exportDebugLogs())
   ipcMain.handle("record-fatal-renderer-error", (_event: IpcMainInvokeEvent, error: FatalRendererError) =>
