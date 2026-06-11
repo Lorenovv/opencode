@@ -79,6 +79,7 @@ export function registerIpcHandlers(deps: Deps) {
     gloamAuth.clearSession()
   })
   ipcMain.handle("gloam-auth-has-token", () => gloamAuth.getStoredToken() != null)
+  ipcMain.handle("gloam-auth-token", () => gloamAuth.getStoredToken())
   ipcMain.handle("set-background-color", (_event: IpcMainInvokeEvent, color: string) => deps.setBackgroundColor(color))
   ipcMain.handle("export-debug-logs", () => deps.exportDebugLogs())
   ipcMain.handle("record-fatal-renderer-error", (_event: IpcMainInvokeEvent, error: FatalRendererError) =>
