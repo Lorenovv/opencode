@@ -191,20 +191,21 @@ export async function config(): Promise<GloamAuthConfig> {
 // these two bounce the user out to the system browser and bring the session
 // back through a different channel:
 //
-//   * Google: opens `${API}/auth/desktop/google/start`, which redirects to
-//     Google's consent screen and finally to `/auth/desktop/google/callback`.
-//     That callback renders an interstitial that `location.replace`s to
-//     `opencode://auth/callback?provider=google&token=...&expires_at_unix=...`.
+//   * Google: opens the desktop google start endpoint, which redirects to
+//     Google's consent screen and finally to the desktop google callback.
+//     That callback renders an interstitial that location.replace-s to
+//     opencode://auth/callback?provider=google&token=...&expires_at_unix=...
 //     The OS hands that deep link to the app; the renderer forwards it to
-//     `applyDeepLinkSession()`.
+//     applyDeepLinkSession().
 //
-//   * Telegram: opens `https://t.me/<bot>?start=desktop_<state>`. The bot
-//     resolves the account and stashes it against <state>; the renderer then
-//     polls `pollTelegramExchange(state)` which claims the session via the
-//     existing `/auth/telegram/exchange` endpoint. (Telegram won't linkify a
-//     custom `opencode://` scheme, so there is no deep link for this flow.)
+//   * Telegram: opens the bot start link t.me/<bot>?start=desktop_<state>. The
+//     bot resolves the account and stashes it against <state>; the renderer
+//     then polls pollTelegramExchange(state) which claims the session via the
+//     existing /auth/telegram/exchange endpoint. (Telegram won't linkify a
+//     custom opencode:// scheme, so there is no deep link for this flow.)
 
 const DEEP_LINK_AUTH_ROUTE = "auth/callback"
+const TELEGRAM_LINK_BASE = "https://t.me/"
 
 export function googleStartUrl(): string {
 	return `${apiBase()}/auth/desktop/google/start`
@@ -229,7 +230,8 @@ export async function startTelegramLogin(): Promise<{ url: string; state: string
 		)
 	}
 	const state = randomBytes(18).toString("base64url")
-	const url = `https://t.me/${encodeURIComponent(username)}?start=desktop_${state}`
+	const url =
+		TELEGRAM_LINK_BASE + encodeURIComponent(username) + "?start=desktop_" + state
 	await shell.openExternal(url)
 	return { url, state }
 }
