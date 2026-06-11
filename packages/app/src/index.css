@@ -206,3 +206,16 @@
     }
   }
 }
+
+/* Gloam: widen the Settings window for more horizontal breathing room.
+   Unlayered + !important so it beats the dialog-v2 component sizing (x-large)
+   regardless of Tailwind layer ordering. */
+[data-component="dialog-v2"][data-variant="settings"] [data-slot="dialog-container"] {
+  width: min(1120px, calc(100vw - 48px)) !important;
+  max-width: min(1120px, calc(100vw - 48px)) !important;
+}
+
+[data-component="dialog-v2"][data-variant="settings"] [data-slot="dialog-content"] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
