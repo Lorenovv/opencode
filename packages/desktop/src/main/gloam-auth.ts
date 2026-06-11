@@ -1,5 +1,7 @@
-import { net, shell } from "electron"
+import { app, net, shell } from "electron"
 import { randomBytes } from "node:crypto"
+import { readFileSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
 
 import type {
 	GloamAuthConfig,
@@ -20,6 +22,12 @@ import {
 // bearer token in the response body (never a cookie), and store it locally.
 const DEFAULT_API_BASE = "https://bot-gloam-ai.vercel.app/api"
 const DESKTOP_CLIENT_HEADER = "desktop"
+
+// The managed Gloam provider is registered against the gateway origin as its
+// providerID inside the sidecar's auth store (auth.json). On logout we must
+// remove that credential from disk, otherwise the freshly-restarted sidecar
+// re-reads it and silently reconnects the provider with the stale token.
+const GLOAM_GATEWAY_PROVIDER_ID = "https://gloam-gateway.vercel.app"
 
 function apiBase(): string {
 	const raw = (process.env.GLOAM_API_BASE_URL ?? "").trim()
@@ -77,6 +85,45 @@ export function clearSession(): void {
 	const store = getStore(GLOAM_AUTH_STORE)
 	store.delete(GLOAM_SESSION_TOKEN_KEY)
 	store.delete(GLOAM_SESSION_EXPIRES_KEY)
+}
+
+// Path to the embedded opencode server's credential store. The sidecar pins
+// XDG_DATA_HOME to <userData>/data (see sidecar.ts), and opencode keeps its
+// auth file at <XDG_DATA_HOME>/opencode/auth.json.
+function sidecarAuthPath(): string {
+	return join(app.getPath("userData"), "data", "opencode", "auth.json")
+}
+
+// Remove the managed Gloam provider credential from the sidecar's auth.json.
+// Best-effort: the file may not exist yet, may be empty, or may hold unrelated
+// custom-provider keys (which we must preserve), so we only drop the Gloam
+// entry instead of deleting the whole file.
+export function clearSidecarGloamCredential(): void {
+	const authPath = sidecarAuthPath()
+	let parsed: Record<string, unknown>
+	try {
+		parsed = JSON.parse(readFileSync(authPath, "utf8")) as Record<string, unknown>
+	} catch {
+		// No readable auth store -> nothing to clear.
+		return
+	}
+	if (!parsed || typeof parsed !== "object" || !(GLOAM_GATEWAY_PROVIDER_ID in parsed)) {
+		return
+	}
+	delete parsed[GLOAM_GATEWAY_PROVIDER_ID]
+	try {
+		writeFileSync(authPath, JSON.stringify(parsed, null, 2))
+	} catch (error) {
+		writeLog("gloam-auth", "failed to clear sidecar credential", { error: String(error) }, "warn")
+	}
+}
+
+// Full desktop logout: drop the stored session token and the sidecar's managed
+// provider credential. The caller is responsible for relaunching the app so the
+// sidecar restarts without the Gloam provider.
+export function logout(): void {
+	clearSession()
+	clearSidecarGloamCredential()
 }
 
 function endpointFor(req: GloamLoginRequest): {
