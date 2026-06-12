@@ -2,7 +2,6 @@ export * as BuiltInTools from "./builtins"
 
 import { Layer } from "effect"
 import { BashTool } from "./bash"
-import { ApplyPatchTool } from "./apply-patch"
 import { EditTool } from "./edit"
 import { GlobTool } from "./glob"
 import { GrepTool } from "./grep"
@@ -22,13 +21,19 @@ import { WriteTool } from "./write"
  * than this static list. The caller intentionally supplies shared Location
  * services once to this merged set.
  *
+ * NOTE: apply_patch is intentionally omitted. Its single large multiline
+ * patchText argument is fragile when streamed through proxied/reseller
+ * providers (truncation or newline-escaping breaks the tool-call JSON, which
+ * surfaces as "Invalid input for tool apply_patch: JSON parsing failed" on any
+ * model). File mutations go through write/edit (and bash for deletes), whose
+ * smaller structured arguments survive proxying reliably.
+ *
  * TODO: Port the remaining launch-follow-up leaves deliberately: edit fuzzy
  * parity, task, LSP,
  * repo_clone, repo_overview, plan_exit, and Rune/code mode. Keep MCP and plugin
  * transforms separate from this static built-in list.
  */
 export const locationLayer = Layer.mergeAll(
-  ApplyPatchTool.layer,
   BashTool.layer,
   EditTool.layer,
   GlobTool.layer,
