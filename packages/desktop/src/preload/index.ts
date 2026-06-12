@@ -61,6 +61,7 @@ const api: ElectronAPI = {
     config: () => ipcRenderer.invoke("gloam-auth-config"),
     login: (req) => ipcRenderer.invoke("gloam-auth-login", req),
     me: () => ipcRenderer.invoke("gloam-auth-me"),
+    desktopStatus: () => ipcRenderer.invoke("gloam-auth-desktop-status"),
     logout: () => ipcRenderer.invoke("gloam-auth-logout"),
     hasToken: () => ipcRenderer.invoke("gloam-auth-has-token"),
     getToken: () => ipcRenderer.invoke("gloam-auth-token"),

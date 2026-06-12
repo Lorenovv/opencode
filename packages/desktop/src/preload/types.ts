@@ -66,6 +66,26 @@ export type GloamMe = {
   status?: Record<string, unknown>
 }
 
+// Desktop-tier entitlement snapshot from the backend /desktop/status endpoint.
+// `desktop.active` (equivalently `desktop.mode === "full"`) is true only for
+// users on the paid Gloam Desktop plan; Free/Pro users are limited to "auto"
+// mode and cannot hand-pick models or manage providers. `account` mirrors the
+// /auth/me status payload (quota_used, quota_limit, daily_remaining, ...).
+export type GloamDesktopStatus = {
+  authenticated: boolean
+  tgId?: number
+  plan?: string
+  desktop?: {
+    active: boolean
+    mode: "full" | "auto"
+    until?: string | null
+    price?: number
+    currency?: string
+    manageUrl?: string
+  }
+  account?: Record<string, unknown>
+}
+
 // The backend /auth/config endpoint returns snake_case keys. We keep the older
 // camelCase aliases too so nothing that referenced them breaks, but new code
 // should read the snake_case fields.
@@ -85,6 +105,8 @@ export type GloamAuthAPI = {
   config: () => Promise<GloamAuthConfig>
   login: (req: GloamLoginRequest) => Promise<GloamSession>
   me: () => Promise<GloamMe>
+  // Desktop-tier entitlement + quota snapshot from /desktop/status.
+  desktopStatus: () => Promise<GloamDesktopStatus>
   logout: () => Promise<void>
   hasToken: () => Promise<boolean>
   getToken: () => Promise<string | null>
