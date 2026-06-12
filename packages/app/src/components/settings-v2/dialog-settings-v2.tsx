@@ -9,6 +9,7 @@ import { SettingsGeneralV2 } from "./general"
 import { SettingsKeybinds } from "../settings-keybinds"
 import { SettingsProvidersV2 } from "./providers"
 import { SettingsModelsV2 } from "./models"
+import { SettingsLimitsV2 } from "./limits"
 import "./settings-v2.css"
 import { SettingsServersV2 } from "./servers"
 
@@ -19,8 +20,17 @@ type GloamMe = {
   email?: string
 }
 
+type GloamDesktopStatus = {
+  authenticated: boolean
+  desktop?: { active: boolean; mode: "full" | "auto" }
+}
+
 type DesktopApi = {
-  gloamAuth?: { logout?: () => Promise<unknown>; me?: () => Promise<GloamMe> }
+  gloamAuth?: {
+    logout?: () => Promise<unknown>
+    me?: () => Promise<GloamMe>
+    desktopStatus?: () => Promise<GloamDesktopStatus>
+  }
   relaunch?: () => void
 }
 
@@ -43,6 +53,31 @@ export const DialogSettings: Component = () => {
       return null
     }
   })
+
+  // Desktop-tier entitlement. Only the paid Gloam Desktop plan unlocks provider
+  // and model selection; Free/Pro accounts are pinned to managed "auto" mode, so
+  // we hide those tabs for them. The gateway enforces the same rule server-side.
+  const [entitlement] = createResource(async () => {
+    const api = desktopApi()
+    if (!api?.gloamAuth?.desktopStatus) return null
+    try {
+      return await api.gloamAuth.desktopStatus()
+    } catch {
+      return null
+    }
+  })
+
+  // Fail open: on web (no desktop bridge) or while the request is in flight /
+  // failed, keep full access so we never lock anyone out by accident. Only an
+  // explicit non-desktop entitlement hides the provider/model tabs.
+  const fullAccess = () => {
+    const api = desktopApi()
+    if (!api?.gloamAuth?.desktopStatus) return true
+    if (entitlement.loading) return true
+    const status = entitlement()
+    if (!status) return true
+    return status.desktop?.active === true
+  }
 
   const accountName = () => {
     const me = account()
@@ -89,6 +124,10 @@ export const DialogSettings: Component = () => {
                       <Icon name="keyboard" />
                       {language.t("settings.tab.shortcuts")}
                     </TabsV2.Trigger>
+                    <TabsV2.Trigger value="limits">
+                      <Icon name="checklist" />
+                      Лимиты
+                    </TabsV2.Trigger>
                   </div>
                 </div>
 
@@ -99,14 +138,16 @@ export const DialogSettings: Component = () => {
                       <Icon name="server" />
                       {language.t("status.popover.tab.servers")}
                     </TabsV2.Trigger>
-                    <TabsV2.Trigger value="providers">
-                      <Icon name="providers" />
-                      {language.t("settings.providers.title")}
-                    </TabsV2.Trigger>
-                    <TabsV2.Trigger value="models">
-                      <Icon name="models" />
-                      {language.t("settings.models.title")}
-                    </TabsV2.Trigger>
+                    <Show when={fullAccess()}>
+                      <TabsV2.Trigger value="providers">
+                        <Icon name="providers" />
+                        {language.t("settings.providers.title")}
+                      </TabsV2.Trigger>
+                      <TabsV2.Trigger value="models">
+                        <Icon name="models" />
+                        {language.t("settings.models.title")}
+                      </TabsV2.Trigger>
+                    </Show>
                   </div>
                 </div>
               </div>
@@ -145,15 +186,20 @@ export const DialogSettings: Component = () => {
         <TabsV2.Content value="shortcuts" class="settings-v2-panel">
           <SettingsKeybinds v2 />
         </TabsV2.Content>
+        <TabsV2.Content value="limits" class="settings-v2-panel">
+          <SettingsLimitsV2 />
+        </TabsV2.Content>
         <TabsV2.Content value="servers" class="settings-v2-panel">
           <SettingsServersV2 />
         </TabsV2.Content>
-        <TabsV2.Content value="providers" class="settings-v2-panel">
-          <SettingsProvidersV2 />
-        </TabsV2.Content>
-        <TabsV2.Content value="models" class="settings-v2-panel">
-          <SettingsModelsV2 />
-        </TabsV2.Content>
+        <Show when={fullAccess()}>
+          <TabsV2.Content value="providers" class="settings-v2-panel">
+            <SettingsProvidersV2 />
+          </TabsV2.Content>
+          <TabsV2.Content value="models" class="settings-v2-panel">
+            <SettingsModelsV2 />
+          </TabsV2.Content>
+        </Show>
       </TabsV2>
     </Dialog>
   )

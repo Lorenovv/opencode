@@ -5,6 +5,7 @@ import { join } from "node:path"
 
 import type {
 	GloamAuthConfig,
+	GloamDesktopStatus,
 	GloamLoginRequest,
 	GloamMe,
 	GloamSession,
@@ -212,6 +213,63 @@ export async function me(): Promise<GloamMe> {
 		}
 	} catch (error) {
 		writeLog("gloam-auth", "me() request failed", { error: String(error) }, "error")
+		return { authenticated: false }
+	}
+}
+
+// Desktop-tier entitlement + quota snapshot. Backed by GET /desktop/status,
+// which returns the user's plan, the desktop subscription block, and the same
+// account status payload as /auth/me. The renderer uses `desktop.active` /
+// `desktop.mode` to decide whether to unlock provider + model selection or pin
+// the user to managed "auto" mode.
+export async function desktopStatus(): Promise<GloamDesktopStatus> {
+	const token = getStoredToken()
+	if (!token) return { authenticated: false }
+	try {
+		const res = await net.fetch(`${apiBase()}/desktop/status`, {
+			method: "GET",
+			headers: {
+				"X-Gloam-Client": DESKTOP_CLIENT_HEADER,
+				Authorization: `Bearer ${token}`,
+			},
+		})
+		if (res.status === 401 || res.status === 403) {
+			clearSession()
+			return { authenticated: false }
+		}
+		if (!res.ok) {
+			writeLog("gloam-auth", "desktopStatus() returned non-ok status", { status: res.status }, "warn")
+			return { authenticated: false }
+		}
+		const data = (await res.json()) as Record<string, unknown>
+		const desktopRaw =
+			data.desktop && typeof data.desktop === "object"
+				? (data.desktop as Record<string, unknown>)
+				: undefined
+		const desktop = desktopRaw
+			? {
+					active: desktopRaw.active === true,
+					mode: desktopRaw.mode === "full" ? ("full" as const) : ("auto" as const),
+					until: typeof desktopRaw.until === "string" ? desktopRaw.until : null,
+					price: typeof desktopRaw.price === "number" ? desktopRaw.price : undefined,
+					currency:
+						typeof desktopRaw.currency === "string" ? desktopRaw.currency : undefined,
+					manageUrl:
+						typeof desktopRaw.manage_url === "string" ? desktopRaw.manage_url : undefined,
+				}
+			: undefined
+		return {
+			authenticated: true,
+			tgId: typeof data.tg_id === "number" ? data.tg_id : undefined,
+			plan: typeof data.plan === "string" ? data.plan : undefined,
+			desktop,
+			account:
+				data.account && typeof data.account === "object"
+					? (data.account as Record<string, unknown>)
+					: undefined,
+		}
+	} catch (error) {
+		writeLog("gloam-auth", "desktopStatus() request failed", { error: String(error) }, "error")
 		return { authenticated: false }
 	}
 }
