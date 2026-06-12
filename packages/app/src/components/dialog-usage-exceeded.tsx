@@ -9,6 +9,7 @@ export type DialogGoUpsellProps = {
   description: JSX.Element
   link?: string
   actionLabel: string
+  dismissLabel?: string
   onClose?: (dontShowAgain?: boolean) => void
 }
 
@@ -32,7 +33,7 @@ export function DialogUsageExceeded(props: DialogGoUpsellProps) {
       <div class="flex flex-col gap-4 pl-6 pr-2.5 pb-3">
         <div class="flex justify-end gap-2">
           <Button variant="ghost" size="large" onClick={dismiss}>
-            Don't show again
+            {props.dismissLabel ?? "Don't show again"}
           </Button>
           <Button variant="primary" size="large" onClick={runAction}>
             {props.actionLabel}
