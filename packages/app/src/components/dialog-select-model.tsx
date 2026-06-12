@@ -1,5 +1,5 @@
 import { Popover as Kobalte } from "@kobalte/core/popover"
-import { Component, ComponentProps, createMemo, JSX, Show, ValidComponent } from "solid-js"
+import { Component, ComponentProps, createMemo, createResource, JSX, Show, ValidComponent } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useLocal } from "@/context/local"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
@@ -18,6 +18,23 @@ const isFree = (provider: string, cost: { input: number } | undefined) =>
 
 type ModelState = ReturnType<typeof useLocal>["model"]
 
+// Gloam Desktop bridge (renderer side). Present only in the desktop app; on
+// web it is undefined, in which case the picker is never restricted.
+type GloamDesktopStatus = {
+  authenticated?: boolean
+  desktop?: { active?: boolean }
+}
+const desktopBridge = ():
+  | { gloamAuth?: { desktopStatus?: () => Promise<GloamDesktopStatus> } }
+  | undefined =>
+  typeof window === "undefined"
+    ? undefined
+    : (
+        window as unknown as {
+          api?: { gloamAuth?: { desktopStatus?: () => Promise<GloamDesktopStatus> } }
+        }
+      ).api
+
 const ModelList: Component<{
   provider?: string
   class?: string
@@ -28,6 +45,26 @@ const ModelList: Component<{
   const model = props.model ?? useLocal().model
   const language = useLanguage()
 
+  // Resolve the Gloam Desktop entitlement. Free / Pro (non-desktop) users are
+  // locked to "Auto" and cannot choose a concrete model or provider.
+  const [desktopStatus] = createResource(async () => {
+    const bridge = desktopBridge()
+    if (!bridge?.gloamAuth?.desktopStatus) return null
+    try {
+      return await bridge.gloamAuth.desktopStatus()
+    } catch {
+      return null
+    }
+  })
+  const autoOnly = createMemo(() => {
+    const bridge = desktopBridge()
+    if (!bridge?.gloamAuth?.desktopStatus) return false // web / no bridge -> normal picker
+    if (desktopStatus.loading) return true // lock to Auto while resolving (avoid flashing models)
+    const status = desktopStatus()
+    if (!status) return false // status request failed -> fail open
+    return status.desktop?.active !== true // signed in but not Desktop -> Auto only
+  })
+
   const models = createMemo(() =>
     model
       .list()
@@ -36,52 +73,67 @@ const ModelList: Component<{
   )
 
   return (
-    <List
-      class={`flex-1 px-3 min-h-0 [&_[data-slot=list-scroll]]:flex-1 [&_[data-slot=list-scroll]]:min-h-0 ${props.class ?? ""}`}
-      search={{ placeholder: language.t("dialog.model.search.placeholder"), autofocus: true, action: props.action }}
-      emptyMessage={language.t("dialog.model.empty")}
-      key={(x) => `${x.provider.id}:${x.id}`}
-      items={models}
-      current={model.current()}
-      filterKeys={["provider.name", "name", "id"]}
-      sortBy={(a, b) => a.name.localeCompare(b.name)}
-      groupBy={(x) => x.provider.name}
-      sortGroupsBy={(a, b) => {
-        const aProvider = a.items[0].provider.id
-        const bProvider = b.items[0].provider.id
-        if (popularProviders.includes(aProvider) && !popularProviders.includes(bProvider)) return -1
-        if (!popularProviders.includes(aProvider) && popularProviders.includes(bProvider)) return 1
-        return popularProviders.indexOf(aProvider) - popularProviders.indexOf(bProvider)
-      }}
-      itemWrapper={(item, node) => (
-        <Tooltip
-          class="w-full"
-          placement="right-start"
-          gutter={12}
-          value={<ModelTooltip model={item} latest={item.latest} free={isFree(item.provider.id, item.cost)} />}
+    <Show
+      when={autoOnly()}
+      fallback={
+        <List
+          class={`flex-1 px-3 min-h-0 [&_[data-slot=list-scroll]]:flex-1 [&_[data-slot=list-scroll]]:min-h-0 ${props.class ?? ""}`}
+          search= placeholder: language.t("dialog.model.search.placeholder"), autofocus: true, action: props.action 
+          emptyMessage={language.t("dialog.model.empty")}
+          key={(x) => `${x.provider.id}:${x.id}`}
+          items={models}
+          current={model.current()}
+          filterKeys={["provider.name", "name", "id"]}
+          sortBy={(a, b) => a.name.localeCompare(b.name)}
+          groupBy={(x) => x.provider.name}
+          sortGroupsBy={(a, b) => {
+            const aProvider = a.items[0].provider.id
+            const bProvider = b.items[0].provider.id
+            if (popularProviders.includes(aProvider) && !popularProviders.includes(bProvider)) return -1
+            if (!popularProviders.includes(aProvider) && popularProviders.includes(bProvider)) return 1
+            return popularProviders.indexOf(aProvider) - popularProviders.indexOf(bProvider)
+          }}
+          itemWrapper={(item, node) => (
+            <Tooltip
+              class="w-full"
+              placement="right-start"
+              gutter={12}
+              value={<ModelTooltip model={item} latest={item.latest} free={isFree(item.provider.id, item.cost)} />}
+            >
+              {node}
+            </Tooltip>
+          )}
+          onSelect={(x) => {
+            model.set(x ? { modelID: x.id, providerID: x.provider.id } : undefined, {
+              recent: true,
+            })
+            props.onSelect()
+          }}
         >
-          {node}
-        </Tooltip>
-      )}
-      onSelect={(x) => {
-        model.set(x ? { modelID: x.id, providerID: x.provider.id } : undefined, {
-          recent: true,
-        })
-        props.onSelect()
-      }}
+          {(i) => (
+            <div class="w-full flex items-center gap-x-2 text-13-regular">
+              <span class="truncate">{i.name}</span>
+              <Show when={isFree(i.provider.id, i.cost)}>
+                <Tag>{language.t("model.tag.free")}</Tag>
+              </Show>
+              <Show when={i.latest}>
+                <Tag>{language.t("model.tag.latest")}</Tag>
+              </Show>
+            </div>
+          )}
+        </List>
+      }
     >
-      {(i) => (
+      <div class="flex-1 px-3 min-h-0 flex flex-col gap-3">
         <div class="w-full flex items-center gap-x-2 text-13-regular">
-          <span class="truncate">{i.name}</span>
-          <Show when={isFree(i.provider.id, i.cost)}>
-            <Tag>{language.t("model.tag.free")}</Tag>
-          </Show>
-          <Show when={i.latest}>
-            <Tag>{language.t("model.tag.latest")}</Tag>
-          </Show>
+          <span class="truncate">Auto</span>
+          <Tag>Gloam Desktop</Tag>
         </div>
-      )}
-    </List>
+        <p class="text-13-regular text-text-base">
+          Доступен только режим Auto. Выбор моделей открывается с тарифом Gloam Desktop.
+        </p>
+      </div>
+    </Show>
   )
 }
 
