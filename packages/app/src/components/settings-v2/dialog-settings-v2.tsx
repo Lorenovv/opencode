@@ -67,13 +67,15 @@ export const DialogSettings: Component = () => {
     }
   })
 
-  // Fail open: on web (no desktop bridge) or while the request is in flight /
-  // failed, keep full access so we never lock anyone out by accident. Only an
-  // explicit non-desktop entitlement hides the provider/model tabs.
+  // On the web build there is no desktop bridge, so keep full access. On desktop
+  // we default to locked while the desktopStatus() request is in flight: this
+  // prevents the provider/model tabs from flashing in for a split second before
+  // the Free/Pro check resolves and hides them again. If the request fails
+  // outright we fail open so a paid user is never accidentally locked out.
   const fullAccess = () => {
     const api = desktopApi()
     if (!api?.gloamAuth?.desktopStatus) return true
-    if (entitlement.loading) return true
+    if (entitlement.loading) return false
     const status = entitlement()
     if (!status) return true
     return status.desktop?.active === true

@@ -59,8 +59,6 @@ export const SettingsLimitsV2: Component = () => {
 
   const quotaUsed = () => num("quota_used")
   const quotaLimit = () => num("quota_limit")
-  const dailyRemaining = () => num("daily_remaining")
-  const dailyLimit = () => num("daily_limit")
 
   const renewsOn = (): string | null => {
     const until = status()?.desktop?.until
@@ -83,60 +81,51 @@ export const SettingsLimitsV2: Component = () => {
   }
 
   return (
-    <div class="flex flex-col gap-6">
-      <div class="flex flex-col gap-1.5">
-        <h2 class="text-lg font-semibold">Лимиты</h2>
-        <p class="text-sm opacity-60">Тариф, квота и управление подпиской Gloam Desktop.</p>
+    <>
+      <div class="settings-v2-tab-header">
+        <h2 class="settings-v2-tab-title">Лимиты</h2>
       </div>
-
-      <div class="flex flex-col gap-2">
-        <h3 class="text-sm font-medium opacity-70">Тариф</h3>
-        <SettingsListV2>
-          <SettingsRowV2 title="Текущий тариф" description="Ваш активный тариф Gloam Desktop">
-            <Tag>{planLabel()}</Tag>
-          </SettingsRowV2>
-          <Show when={renewsOn()}>
-            <SettingsRowV2 title="Продление" description="">
-              <span>{renewsOn()}</span>
+      <div class="settings-v2-tab-body">
+        <div class="settings-v2-section">
+          <h3 class="settings-v2-section-title">Тариф</h3>
+          <SettingsListV2>
+            <SettingsRowV2 title="Текущий тариф" description="Ваш активный тариф Gloam Desktop">
+              <Tag>{planLabel()}</Tag>
             </SettingsRowV2>
-          </Show>
-        </SettingsListV2>
-      </div>
-
-      <div class="flex flex-col gap-2">
-        <h3 class="text-sm font-medium opacity-70">Использование</h3>
-        <SettingsListV2>
-          <Show
-            when={quotaLimit() !== undefined || dailyLimit() !== undefined}
-            fallback={
-              <SettingsRowV2 title="Квота запросов" description="">
-                <span>Недоступно</span>
+            <Show when={renewsOn()}>
+              <SettingsRowV2 title="Продление" description="Дата следующего списания">
+                <span>{renewsOn()}</span>
               </SettingsRowV2>
-            }
-          >
-            <Show when={quotaLimit() !== undefined}>
+            </Show>
+          </SettingsListV2>
+        </div>
+
+        <div class="settings-v2-section">
+          <h3 class="settings-v2-section-title">Использование</h3>
+          <SettingsListV2>
+            <Show
+              when={quotaLimit() !== undefined}
+              fallback={
+                <SettingsRowV2 title="Квота запросов" description="Использовано из общего лимита за период">
+                  <span>Недоступно</span>
+                </SettingsRowV2>
+              }
+            >
               <SettingsRowV2 title="Квота запросов" description="Использовано из общего лимита за период">
                 <span>
                   {quotaUsed() ?? 0} / {quotaLimit()}
                 </span>
               </SettingsRowV2>
             </Show>
-            <Show when={dailyLimit() !== undefined}>
-              <SettingsRowV2 title="Осталось за день" description="">
-                <span>
-                  {dailyRemaining() ?? 0} / {dailyLimit()}
-                </span>
-              </SettingsRowV2>
-            </Show>
-          </Show>
-        </SettingsListV2>
-      </div>
+          </SettingsListV2>
+        </div>
 
-      <div>
-        <ButtonV2 size="normal" variant="neutral" onClick={openManage}>
-          Управление планом
-        </ButtonV2>
+        <div>
+          <ButtonV2 size="normal" variant="neutral" onClick={openManage}>
+            Управление планом
+          </ButtonV2>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
