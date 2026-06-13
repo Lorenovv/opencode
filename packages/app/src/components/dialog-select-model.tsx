@@ -13,6 +13,10 @@ import { Tooltip } from "@opencode-ai/ui/tooltip"
 import { ModelTooltip } from "./model-tooltip"
 import { useLanguage } from "@/context/language"
 
+// Same gateway the Gloam provider points at; used to fetch per-model quota
+// multipliers for the "x N" cost tag shown next to each Gloam model.
+const GLOAM_GATEWAY_URL = "https://gloam-gateway.vercel.app"
+
 const isFree = (provider: string, cost: { input: number } | undefined) =>
   provider === "opencode" && (!cost || cost.input === 0)
 
@@ -64,6 +68,23 @@ const ModelList: Component<{
     if (!status) return false // status request failed -> fail open
     return status.desktop?.active !== true // signed in but not Desktop -> Auto only
   })
+
+  // Per-model quota multipliers (e.g. opus-4.8 burns x4). Fetched from the
+  // gateway so the displayed cost stays in sync with server-side enforcement.
+  const [multipliers] = createResource(async () => {
+    try {
+      const r = await fetch(`${GLOAM_GATEWAY_URL}/v1/multipliers`, { cache: "no-store" })
+      if (!r.ok) return {} as Record<string, number>
+      return (await r.json()) as Record<string, number>
+    } catch {
+      return {} as Record<string, number>
+    }
+  })
+  const multiplierFor = (m: { id: string; provider: { id: string } }): number | undefined => {
+    if (m.provider.id !== "gloam") return undefined
+    const v = multipliers()?.[m.id]
+    return typeof v === "number" && v > 0 ? v : undefined
+  }
 
   const models = createMemo(() =>
     model
@@ -124,6 +145,9 @@ const ModelList: Component<{
               </Show>
               <Show when={i.latest}>
                 <Tag>{language.t("model.tag.latest")}</Tag>
+              </Show>
+              <Show when={multiplierFor(i)}>
+                {(v) => <Tag>{`×${v()}`}</Tag>}
               </Show>
             </div>
           )}
