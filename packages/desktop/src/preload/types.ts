@@ -86,6 +86,20 @@ export type GloamDesktopStatus = {
   account?: Record<string, unknown>
 }
 
+// Gloam Desktop coding-credit pool, read from the gateway's
+// GET /v1/desktop/usage. This is the pool that actually meters coding requests
+// (each request costs the model's multiplier in points); it is SEPARATE from
+// the bot chat quota in `GloamDesktopStatus.account`. `resetsAt` is the ISO
+// timestamp when the rolling window refills (null when no window is active yet,
+// i.e. the budget is full and the window only starts on the next request).
+export type GloamDesktopUsage = {
+  authenticated: boolean
+  used?: number
+  limit?: number
+  windowStart?: string | null
+  resetsAt?: string | null
+}
+
 // The backend /auth/config endpoint returns snake_case keys. We keep the older
 // camelCase aliases too so nothing that referenced them breaks, but new code
 // should read the snake_case fields.
@@ -107,6 +121,8 @@ export type GloamAuthAPI = {
   me: () => Promise<GloamMe>
   // Desktop-tier entitlement + quota snapshot from /desktop/status.
   desktopStatus: () => Promise<GloamDesktopStatus>
+  // Coding-credit pool usage from the gateway /v1/desktop/usage.
+  desktopUsage: () => Promise<GloamDesktopUsage>
   logout: () => Promise<void>
   hasToken: () => Promise<boolean>
   getToken: () => Promise<string | null>

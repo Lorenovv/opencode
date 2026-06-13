@@ -76,6 +76,7 @@ export function registerIpcHandlers(deps: Deps) {
   ipcMain.handle("gloam-auth-login", (_event: IpcMainInvokeEvent, req: GloamLoginRequest) => gloamAuth.login(req))
   ipcMain.handle("gloam-auth-me", () => gloamAuth.me())
   ipcMain.handle("gloam-auth-desktop-status", () => gloamAuth.desktopStatus())
+  ipcMain.handle("gloam-auth-desktop-usage", () => gloamAuth.desktopUsage())
   ipcMain.handle("gloam-auth-logout", () => {
     gloamAuth.logout()
   })

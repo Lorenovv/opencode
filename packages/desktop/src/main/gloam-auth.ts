@@ -6,6 +6,7 @@ import { join } from "node:path"
 import type {
 	GloamAuthConfig,
 	GloamDesktopStatus,
+	GloamDesktopUsage,
 	GloamLoginRequest,
 	GloamMe,
 	GloamSession,
@@ -30,9 +31,19 @@ const DESKTOP_CLIENT_HEADER = "desktop"
 // re-reads it and silently reconnects the provider with the stale token.
 const GLOAM_GATEWAY_PROVIDER_ID = "https://gloam-gateway.vercel.app"
 
+// Origin of the Gloam gateway (the OpenAI-compatible proxy). The coding-credit
+// pool lives here, not on the bot backend, so the Limits tab reads usage from
+// the gateway. Overridable for local/staging via GLOAM_GATEWAY_URL.
+const DEFAULT_GATEWAY_BASE = "https://gloam-gateway.vercel.app"
+
 function apiBase(): string {
 	const raw = (process.env.GLOAM_API_BASE_URL ?? "").trim()
 	return (raw || DEFAULT_API_BASE).replace(/\/+$/, "")
+}
+
+function gatewayBase(): string {
+	const raw = (process.env.GLOAM_GATEWAY_URL ?? "").trim()
+	return (raw || DEFAULT_GATEWAY_BASE).replace(/\/+$/, "")
 }
 
 type AuthResponseBody = {
@@ -270,6 +281,42 @@ export async function desktopStatus(): Promise<GloamDesktopStatus> {
 		}
 	} catch (error) {
 		writeLog("gloam-auth", "desktopStatus() request failed", { error: String(error) }, "error")
+		return { authenticated: false }
+	}
+}
+
+// Coding-credit pool usage for the Limits tab. Backed by the gateway's
+// GET /v1/desktop/usage (authenticated with the same session token). Returns
+// used/limit points and the rolling-window reset time. Non-fatal: any failure
+// just yields { authenticated: false } and the UI shows "Недоступно". We do
+// NOT clear the session on 401 here (status()/me() own session lifecycle).
+export async function desktopUsage(): Promise<GloamDesktopUsage> {
+	const token = getStoredToken()
+	if (!token) return { authenticated: false }
+	try {
+		const res = await net.fetch(`${gatewayBase()}/v1/desktop/usage`, {
+			method: "GET",
+			headers: {
+				"X-Gloam-Client": DESKTOP_CLIENT_HEADER,
+				Authorization: `Bearer ${token}`,
+			},
+		})
+		if (!res.ok) {
+			if (res.status !== 401 && res.status !== 403) {
+				writeLog("gloam-auth", "desktopUsage() returned non-ok status", { status: res.status }, "warn")
+			}
+			return { authenticated: false }
+		}
+		const data = (await res.json()) as Record<string, unknown>
+		return {
+			authenticated: true,
+			used: typeof data.used === "number" ? data.used : 0,
+			limit: typeof data.limit === "number" ? data.limit : 0,
+			windowStart: typeof data.window_start === "string" ? data.window_start : null,
+			resetsAt: typeof data.resets_at === "string" ? data.resets_at : null,
+		}
+	} catch (error) {
+		writeLog("gloam-auth", "desktopUsage() request failed", { error: String(error) }, "error")
 		return { authenticated: false }
 	}
 }
