@@ -41,6 +41,7 @@ import {
 import { useSessionTabAvatarState } from "@/pages/layout/project-avatar-state"
 import { sessionTitle } from "@/utils/session-title"
 import { pathKey } from "@/utils/path-key"
+import { showToast } from "@/utils/toast"
 import { useGlobal } from "@/context/global"
 import { useCommand } from "@/context/command"
 import { useSettings } from "@/context/settings"
@@ -316,6 +317,96 @@ function HomeDesign() {
     navigateOnServer(conn, `/${base64Encode(session.directory)}/session/${session.id}`)
   }
 
+  function refreshSessions(directory: string) {
+    void focusedSync().project.loadSessions(directory, { limit: HOME_SESSION_LIMIT })
+  }
+
+  function renameSession(session: Session, nextTitle: string) {
+    const ctx = focusedServerCtx()
+    if (!ctx) return
+    const trimmed = nextTitle.trim()
+    if (!trimmed || trimmed === (session.title ?? "")) return
+    void (async () => {
+      try {
+        await ctx.sdk.client.session.update({
+          sessionID: session.id,
+          directory: session.directory,
+          title: trimmed,
+        })
+        refreshSessions(session.directory)
+      } catch {
+        showToast({ title: language.t("common.requestFailed") })
+      }
+    })()
+  }
+
+  function archiveSession(session: Session) {
+    const ctx = focusedServerCtx()
+    if (!ctx) return
+    void (async () => {
+      try {
+        await ctx.sdk.client.session.update({
+          sessionID: session.id,
+          directory: session.directory,
+          time: { archived: Date.now() },
+        })
+        refreshSessions(session.directory)
+      } catch {
+        showToast({ title: language.t("common.requestFailed") })
+      }
+    })()
+  }
+
+  function deleteSession(session: Session) {
+    const ctx = focusedServerCtx()
+    if (!ctx) return
+    void (async () => {
+      try {
+        await ctx.sdk.client.session.delete({
+          sessionID: session.id,
+          directory: session.directory,
+        })
+        refreshSessions(session.directory)
+      } catch {
+        showToast({ title: language.t("session.delete.failed.title") })
+      }
+    })()
+  }
+
+  function shareSession(session: Session) {
+    const ctx = focusedServerCtx()
+    if (!ctx) return
+    void (async () => {
+      try {
+        const result = await ctx.sdk.client.session.share({
+          sessionID: session.id,
+          directory: session.directory,
+        })
+        const shareUrl = (result as any)?.data?.share?.url as string | undefined
+        if (shareUrl) {
+          try {
+            await navigator.clipboard.writeText(shareUrl)
+            showToast({
+              variant: "success",
+              title: language.t("toast.session.share.success.title"),
+              description: language.t("toast.session.share.success.description"),
+            })
+          } catch {
+            showToast({ title: language.t("toast.session.share.copyFailed.title") })
+          }
+        } else {
+          showToast({ variant: "success", title: language.t("toast.session.share.success.title") })
+        }
+        refreshSessions(session.directory)
+      } catch {
+        showToast({
+          title: language.t("toast.session.share.failed.title"),
+          description: language.t("toast.session.share.failed.description"),
+        })
+      }
+    })()
+  }
+
   function chooseProject(conn: ServerConnection.Any) {
     function resolve(result: string | string[] | null) {
       addProjects(conn, homeProjectDirectories(result))
@@ -417,6 +508,10 @@ function HomeDesign() {
                                 server={state.selection.server}
                                 activeServer={state.selection.server === server.key}
                                 openSession={openSession}
+                                renameSession={renameSession}
+                                shareSession={shareSession}
+                                archiveSession={archiveSession}
+                                deleteSession={deleteSession}
                               />
                             )}
                           </For>
@@ -736,7 +831,7 @@ function HomeSessionLeading(props: {
         <span
           aria-hidden="true"
           class="pointer-events-none absolute top-1/2 h-[7px] w-[3px] -translate-y-1/2 rounded-[2px] bg-v2-background-bg-layer-04"
-          style={{ right: "calc(100% + 12px)" }}
+          style= right: "calc(100% + 12px)" 
         />
       </Show>
       <HomeSessionAvatar project={props.project} session={props.session} activeServer={props.activeServer} />
@@ -833,11 +928,11 @@ function HomeSessionSearch(props: {
           <div
             data-component="home-session-search-panel"
             class="absolute flex flex-col rounded-[12px] bg-v2-background-bg-base shadow-[var(--v2-elevation-floating)]"
-            style={{
+            style=
               top: "-6px",
               left: "-6px",
               width: "calc(100% + 14px)",
-            }}
+            
           >
             <div class="flex flex-col pt-9">
               <div id={HOME_SESSION_SEARCH_RESULTS_ID} role="listbox" class="flex flex-col gap-4 pt-4 pb-2">
@@ -884,11 +979,11 @@ function HomeSessionSearch(props: {
         </Show>
         <label
           class="relative z-20 flex h-9 w-full items-center gap-2 rounded-[6px] py-1 pl-3 pr-2 text-v2-icon-icon-muted transition-[background-color,box-shadow] duration-[120ms] ease-in-out"
-          classList={{
+          classList=
             "bg-v2-background-bg-deep focus-within:bg-v2-background-bg-base focus-within:shadow-[0_0_0_0.5px_var(--v2-border-border-focus),var(--v2-elevation-raised)]":
               !props.open,
             "bg-transparent shadow-[0_0_0_0.5px_var(--v2-border-border-focus)]": props.open,
-          }}
+          
         >
           <IconV2 name="magnifying-glass" />
           <input
@@ -970,10 +1065,10 @@ function HomeSessionSearchResultRow(props: {
       data-component="home-session-search-row"
       role="option"
       aria-selected={props.selected}
-      classList={{
+      classList=
         [HOME_SEARCH_RESULT_ROW]: true,
         "bg-v2-overlay-simple-overlay-hover": props.selected,
-      }}
+      
       onMouseEnter={() => props.onHighlight()}
       onClick={() => props.onSelect(props.record.session)}
     >
@@ -1025,33 +1120,116 @@ function HomeSessionRow(props: {
   server: ServerConnection.Key
   activeServer: boolean
   openSession: (session: Session) => void
+  renameSession: (session: Session, nextTitle: string) => void
+  shareSession: (session: Session) => void
+  archiveSession: (session: Session) => void
+  deleteSession: (session: Session) => void
 }) {
+  const language = useLanguage()
   const title = createMemo(() => sessionTitle(props.record.session.title) || props.record.session.id)
+  const [state, setState] = createStore({ menuOpen: false, renaming: false, draft: "" })
+  let renameInput: HTMLInputElement | undefined
+
+  const startRename = () => {
+    setState("draft", props.record.session.title ?? title())
+    setState("renaming", true)
+    queueMicrotask(() => {
+      renameInput?.focus()
+      renameInput?.select()
+    })
+  }
+  const commitRename = () => {
+    if (!state.renaming) return
+    setState("renaming", false)
+    props.renameSession(props.record.session, state.draft)
+  }
+  const cancelRename = () => setState("renaming", false)
 
   return (
-    <button
-      type="button"
-      data-component="home-session-row"
-      class={`${HOME_ROW} h-10 gap-2 px-6 py-3 pl-4`}
-      onClick={() => props.openSession(props.record.session)}
-    >
-      <HomeSessionLeading
-        project={props.record.project}
-        session={props.record.session}
-        server={props.server}
-        activeServer={props.activeServer}
-      />
-      <span
-        class={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-v2-text-text-base [font-weight:530] ${props.record.projectName ? "max-w-[min(70%,480px)] flex-[0_1_auto]" : "flex-[1_1_auto]"}`}
+    <div class="group/session relative flex h-10 min-w-0 items-center rounded-[6px]">
+      <Show
+        when={!state.renaming}
+        fallback={
+          <div class={`${HOME_ROW} h-10 w-full gap-2 px-6 py-3 pl-4`}>
+            <HomeSessionLeading
+              project={props.record.project}
+              session={props.record.session}
+              server={props.server}
+              activeServer={props.activeServer}
+            />
+            <input
+              ref={renameInput}
+              class="min-w-0 flex-1 border-0 bg-transparent text-v2-text-text-base outline-0 [font-weight:530]"
+              value={state.draft}
+              onInput={(event) => setState("draft", event.currentTarget.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault()
+                  commitRename()
+                } else if (event.key === "Escape") {
+                  event.preventDefault()
+                  cancelRename()
+                }
+              }}
+              onBlur={commitRename}
+            />
+          </div>
+        }
       >
-        {title()}
-      </span>
-      <Show when={props.record.projectName}>
-        <span class="min-w-0 flex-[1_1_auto] overflow-hidden text-ellipsis whitespace-nowrap text-v2-text-text-muted [font-weight:440]">
-          {props.record.projectName}
-        </span>
+        <button
+          type="button"
+          data-component="home-session-row"
+          class={`${HOME_ROW} h-10 w-full gap-2 px-6 py-3 pl-4 pr-16`}
+          onClick={() => props.openSession(props.record.session)}
+        >
+          <HomeSessionLeading
+            project={props.record.project}
+            session={props.record.session}
+            server={props.server}
+            activeServer={props.activeServer}
+          />
+          <span class="min-w-0 flex-[1_1_auto] overflow-hidden text-ellipsis whitespace-nowrap text-v2-text-text-base [font-weight:530]">
+            {title()}
+          </span>
+        </button>
+        <div
+          class="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity group-hover/session:opacity-100 focus-within:opacity-100 data-[menu=true]:opacity-100"
+          data-menu={state.menuOpen}
+        >
+          <MenuV2
+            gutter={4}
+            modal={false}
+            placement="bottom-end"
+            open={state.menuOpen}
+            onOpenChange={(open) => setState("menuOpen", open)}
+          >
+            <MenuV2.Trigger
+              as={IconButtonV2}
+              data-action="home-session-menu"
+              variant="ghost-muted"
+              size="small"
+              icon={<IconV2 name="outline-dots" />}
+              aria-label={language.t("common.moreOptions")}
+            />
+            <MenuV2.Portal>
+              <MenuV2.Content>
+                <MenuV2.Item onSelect={startRename}>{language.t("common.rename")}</MenuV2.Item>
+                <MenuV2.Item onSelect={() => props.shareSession(props.record.session)}>
+                  {language.t("session.share.action.share")}
+                </MenuV2.Item>
+                <MenuV2.Item onSelect={() => props.archiveSession(props.record.session)}>
+                  {language.t("common.archive")}
+                </MenuV2.Item>
+                <MenuV2.Separator />
+                <MenuV2.Item onSelect={() => props.deleteSession(props.record.session)}>
+                  {language.t("common.delete")}
+                </MenuV2.Item>
+              </MenuV2.Content>
+            </MenuV2.Portal>
+          </MenuV2>
+        </div>
       </Show>
-    </button>
+    </div>
   )
 }
 
@@ -1156,10 +1334,10 @@ function LegacyHome() {
         onClick={() => dialog.show(() => <DialogSelectServer />)}
       >
         <div
-          classList={{
+          classList=
             "size-2 rounded-full": true,
             [serverDotClass()]: true,
-          }}
+          
         />
         {server.name}
       </Button>
