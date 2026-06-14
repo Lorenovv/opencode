@@ -820,7 +820,7 @@ function HomeSessionLeading(props: {
         <span
           aria-hidden="true"
           class="pointer-events-none absolute top-1/2 h-[7px] w-[3px] -translate-y-1/2 rounded-[2px] bg-v2-background-bg-layer-04"
-          style= right: "calc(100% + 12px)" 
+          style={ { right: "calc(100% + 12px)" } }
         />
       </Show>
       <HomeSessionAvatar project={props.project} session={props.session} activeServer={props.activeServer} />
@@ -917,11 +917,11 @@ function HomeSessionSearch(props: {
           <div
             data-component="home-session-search-panel"
             class="absolute flex flex-col rounded-[12px] bg-v2-background-bg-base shadow-[var(--v2-elevation-floating)]"
-            style=
+            style={ {
               top: "-6px",
               left: "-6px",
               width: "calc(100% + 14px)",
-            
+            } }
           >
             <div class="flex flex-col pt-9">
               <div id={HOME_SESSION_SEARCH_RESULTS_ID} role="listbox" class="flex flex-col gap-4 pt-4 pb-2">
@@ -968,11 +968,11 @@ function HomeSessionSearch(props: {
         </Show>
         <label
           class="relative z-20 flex h-9 w-full items-center gap-2 rounded-[6px] py-1 pl-3 pr-2 text-v2-icon-icon-muted transition-[background-color,box-shadow] duration-[120ms] ease-in-out"
-          classList=
+          classList={ {
             "bg-v2-background-bg-deep focus-within:bg-v2-background-bg-base focus-within:shadow-[0_0_0_0.5px_var(--v2-border-border-focus),var(--v2-elevation-raised)]":
               !props.open,
             "bg-transparent shadow-[0_0_0_0.5px_var(--v2-border-border-focus)]": props.open,
-          
+          } }
         >
           <IconV2 name="magnifying-glass" />
           <input
@@ -1054,10 +1054,10 @@ function HomeSessionSearchResultRow(props: {
       data-component="home-session-search-row"
       role="option"
       aria-selected={props.selected}
-      classList=
+      classList={ {
         [HOME_SEARCH_RESULT_ROW]: true,
         "bg-v2-overlay-simple-overlay-hover": props.selected,
-      
+      } }
       onMouseEnter={() => props.onHighlight()}
       onClick={() => props.onSelect(props.record.session)}
     >
@@ -1323,10 +1323,10 @@ function LegacyHome() {
         onClick={() => dialog.show(() => <DialogSelectServer />)}
       >
         <div
-          classList=
+          classList={ {
             "size-2 rounded-full": true,
             [serverDotClass()]: true,
-          
+          } }
         />
         {server.name}
       </Button>
