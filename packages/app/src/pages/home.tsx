@@ -41,7 +41,6 @@ import {
 import { useSessionTabAvatarState } from "@/pages/layout/project-avatar-state"
 import { sessionTitle } from "@/utils/session-title"
 import { pathKey } from "@/utils/path-key"
-import { showToast } from "@/utils/toast"
 import { useGlobal } from "@/context/global"
 import { useCommand } from "@/context/command"
 import { useSettings } from "@/context/settings"
@@ -317,8 +316,8 @@ function HomeDesign() {
     navigateOnServer(conn, `/${base64Encode(session.directory)}/session/${session.id}`)
   }
 
-  function refreshSessions(directory: string) {
-    void focusedSync().project.loadSessions(directory, { limit: HOME_SESSION_LIMIT })
+  function refreshSessions(session: Session) {
+    void focusedSync().project.loadSessions(session.directory, { limit: HOME_SESSION_LIMIT })
   }
 
   function renameSession(session: Session, nextTitle: string) {
@@ -333,9 +332,9 @@ function HomeDesign() {
           directory: session.directory,
           title: trimmed,
         })
-        refreshSessions(session.directory)
-      } catch {
-        showToast({ title: language.t("common.requestFailed") })
+        refreshSessions(session)
+      } catch (error) {
+        console.error("home: rename session failed", error)
       }
     })()
   }
@@ -350,9 +349,9 @@ function HomeDesign() {
           directory: session.directory,
           time: { archived: Date.now() },
         })
-        refreshSessions(session.directory)
-      } catch {
-        showToast({ title: language.t("common.requestFailed") })
+        refreshSessions(session)
+      } catch (error) {
+        console.error("home: archive session failed", error)
       }
     })()
   }
@@ -366,9 +365,9 @@ function HomeDesign() {
           sessionID: session.id,
           directory: session.directory,
         })
-        refreshSessions(session.directory)
-      } catch {
-        showToast({ title: language.t("session.delete.failed.title") })
+        refreshSessions(session)
+      } catch (error) {
+        console.error("home: delete session failed", error)
       }
     })()
   }
@@ -386,23 +385,13 @@ function HomeDesign() {
         if (shareUrl) {
           try {
             await navigator.clipboard.writeText(shareUrl)
-            showToast({
-              variant: "success",
-              title: language.t("toast.session.share.success.title"),
-              description: language.t("toast.session.share.success.description"),
-            })
-          } catch {
-            showToast({ title: language.t("toast.session.share.copyFailed.title") })
+          } catch (error) {
+            console.error("home: copy share url failed", error)
           }
-        } else {
-          showToast({ variant: "success", title: language.t("toast.session.share.success.title") })
         }
-        refreshSessions(session.directory)
-      } catch {
-        showToast({
-          title: language.t("toast.session.share.failed.title"),
-          description: language.t("toast.session.share.failed.description"),
-        })
+        refreshSessions(session)
+      } catch (error) {
+        console.error("home: share session failed", error)
       }
     })()
   }
