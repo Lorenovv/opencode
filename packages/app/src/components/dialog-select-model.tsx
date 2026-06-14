@@ -86,6 +86,25 @@ const ModelList: Component<{
     return typeof v === "number" && v > 0 ? v : undefined
   }
 
+  // Gloam models are ordered server-side via the `sort` column. The gateway's
+  // /v1/models endpoint returns them already sorted ascending, so we capture
+  // that order here and sort the picker by it instead of alphabetically. This
+  // keeps the picker order in sync with the admin panel (weak -> strong).
+  const [gatewayOrder] = createResource(async () => {
+    try {
+      const r = await fetch(`${GLOAM_GATEWAY_URL}/v1/models`, { cache: "no-store" })
+      if (!r.ok) return {} as Record<string, number>
+      const body = (await r.json()) as { data?: Array<{ id?: string }> }
+      const map: Record<string, number> = {}
+      body.data?.forEach((m, i) => {
+        if (m && typeof m.id === "string") map[m.id] = i
+      })
+      return map
+    } catch {
+      return {} as Record<string, number>
+    }
+  })
+
   const models = createMemo(() =>
     model
       .list()
@@ -111,7 +130,15 @@ const ModelList: Component<{
           items={models}
           current={model.current()}
           filterKeys={["provider.name", "name", "id"]}
-          sortBy={(a, b) => a.name.localeCompare(b.name)}
+          sortBy={(a, b) => {
+            const order = gatewayOrder() ?? {}
+            const ai = a.provider.id === "gloam" ? order[a.id] : undefined
+            const bi = b.provider.id === "gloam" ? order[b.id] : undefined
+            if (ai !== undefined && bi !== undefined) return ai - bi
+            if (ai !== undefined) return -1
+            if (bi !== undefined) return 1
+            return a.name.localeCompare(b.name)
+          }}
           groupBy={(x) => x.provider.name}
           sortGroupsBy={(a, b) => {
             const aProvider = a.items[0].provider.id
