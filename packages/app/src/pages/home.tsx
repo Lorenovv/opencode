@@ -24,6 +24,7 @@ import { DialogSelectServer, useServerManagementController } from "@/components/
 import { DialogServerV2 } from "@/components/settings-v2/dialog-server-v2"
 import { ServerConnection, useServer } from "@/context/server"
 import { sessionHasOpenTab, useTabs } from "@/context/tabs"
+import { notifySessionTabsRemoved } from "@/components/titlebar-session-events"
 import { useServerSync } from "@/context/server-sync"
 import { useLanguage } from "@/context/language"
 import { useNotification } from "@/context/notification"
@@ -320,6 +321,12 @@ function HomeDesign() {
     void focusedSync().project.loadSessions(session.directory, { limit: HOME_SESSION_LIMIT })
   }
 
+  function forgetSession(session: Session) {
+    const [, setStore] = focusedSync().child(session.directory, { bootstrap: false })
+    setStore("session", (sessions) => (sessions ?? []).filter((item) => item.id !== session.id))
+    notifySessionTabsRemoved({ directory: session.directory, sessionIDs: [session.id] })
+  }
+
   function renameSession(session: Session, nextTitle: string) {
     const ctx = focusedServerCtx()
     if (!ctx) return
@@ -342,6 +349,7 @@ function HomeDesign() {
   function archiveSession(session: Session) {
     const ctx = focusedServerCtx()
     if (!ctx) return
+    forgetSession(session)
     void (async () => {
       try {
         await ctx.sdk.client.session.update({
@@ -359,6 +367,7 @@ function HomeDesign() {
   function deleteSession(session: Session) {
     const ctx = focusedServerCtx()
     if (!ctx) return
+    forgetSession(session)
     void (async () => {
       try {
         await ctx.sdk.client.session.delete({
