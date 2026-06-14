@@ -25,8 +25,10 @@ type DesktopStatus = {
   account?: Record<string, unknown>
 }
 
-// Coding-credit pool usage from the gateway (the pool that actually meters
-// coding requests, separate from the bot chat quota in DesktopStatus.account).
+// Daily token quota from the gateway. The gateway meters every token (prompt +
+// completion, multiplied by the model coefficient) against a per-day budget
+// that resets at midnight Moscow time. `used` / `limit` are token counts and
+// `resetsAt` is the next midnight reset instant.
 type DesktopUsage = {
   authenticated: boolean
   used?: number
@@ -46,15 +48,28 @@ type DesktopApi = {
 const desktopApi = (): DesktopApi | undefined =>
   typeof window === "undefined" ? undefined : (window as unknown as { api?: DesktopApi }).api
 
-// Russian plural for "день" (1 день, 2 дня, 5 дней).
-const pluralDays = (n: number): string => {
+// Russian plural for "час" (1 час, 2 часа, 5 часов).
+const pluralHours = (n: number): string => {
   const mod100 = n % 100
   const mod10 = n % 10
-  if (mod100 >= 11 && mod100 <= 14) return "дней"
-  if (mod10 === 1) return "день"
-  if (mod10 >= 2 && mod10 <= 4) return "дня"
-  return "дней"
+  if (mod100 >= 11 && mod100 <= 14) return "часов"
+  if (mod10 === 1) return "час"
+  if (mod10 >= 2 && mod10 <= 4) return "часа"
+  return "часов"
 }
+
+// Russian plural for "минута" (1 минута, 2 минуты, 5 минут).
+const pluralMinutes = (n: number): string => {
+  const mod100 = n % 100
+  const mod10 = n % 10
+  if (mod100 >= 11 && mod100 <= 14) return "минут"
+  if (mod10 === 1) return "минута"
+  if (mod10 >= 2 && mod10 <= 4) return "минуты"
+  return "минут"
+}
+
+// Group large token counts with thin spaces (1 000 000) for readability.
+const fmtTokens = (n: number): string => n.toLocaleString("ru-RU")
 
 export const SettingsLimitsV2: Component = () => {
   const [status] = createResource(async () => {
@@ -84,7 +99,7 @@ export const SettingsLimitsV2: Component = () => {
     return "Free"
   }
 
-  // Coding pool (gateway). This is what meters coding requests.
+  // Daily token pool (gateway). This is what meters every request.
   const poolUsed = (): number | undefined => {
     const value = usage()?.used
     return typeof value === "number" ? value : undefined
@@ -94,23 +109,29 @@ export const SettingsLimitsV2: Component = () => {
     return typeof value === "number" && value > 0 ? value : undefined
   }
 
-  // Days remaining until the rolling window refills. resetsAt is null when no
-  // window is active yet (full budget) -> no countdown to show.
-  const daysUntilReset = (): number | null => {
+  // Milliseconds remaining until the daily quota resets at midnight Moscow.
+  // resetsAt is null only when the gateway can't supply a reset instant.
+  const msUntilReset = (): number | null => {
     const at = usage()?.resetsAt
     if (!at) return null
     const parsed = new Date(at)
     if (Number.isNaN(parsed.getTime())) return null
     const ms = parsed.getTime() - Date.now()
-    if (ms <= 0) return 0
-    return Math.ceil(ms / 86_400_000)
+    return ms <= 0 ? 0 : ms
   }
 
   const resetLabel = (): string => {
-    const days = daysUntilReset()
-    if (days === null) return "Квота полная"
-    if (days === 0) return "Сегодня"
-    return `${days} ${pluralDays(days)}`
+    const ms = msUntilReset()
+    if (ms === null) return "В полночь по Москве"
+    if (ms === 0) return "Обновляется…"
+    const totalMinutes = Math.ceil(ms / 60_000)
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    if (hours > 0 && minutes > 0) {
+      return `через ${hours} ${pluralHours(hours)} ${minutes} ${pluralMinutes(minutes)}`
+    }
+    if (hours > 0) return `через ${hours} ${pluralHours(hours)}`
+    return `через ${minutes} ${pluralMinutes(minutes)}`
   }
 
   const renewsOn = (): string | null => {
@@ -154,23 +175,23 @@ export const SettingsLimitsV2: Component = () => {
         </div>
 
         <div class="settings-v2-section">
-          <h3 class="settings-v2-section-title">Квота кодинга</h3>
+          <h3 class="settings-v2-section-title">Дневная квота токенов</h3>
           <SettingsListV2>
             <Show
               when={poolLimit() !== undefined}
               fallback={
-                <SettingsRowV2 title="Использовано баллов" description="Израсходовано из лимита за текущий период">
+                <SettingsRowV2 title="Токенов за сегодня" description="Израсходовано из дневного лимита токенов">
                   <span>Недоступно</span>
                 </SettingsRowV2>
               }
             >
-              <SettingsRowV2 title="Использовано баллов" description="Израсходовано из лимита за текущий период">
+              <SettingsRowV2 title="Токенов за сегодня" description="Израсходовано из дневного лимита токенов">
                 <span>
-                  {poolUsed() ?? 0} / {poolLimit()}
+                  {fmtTokens(poolUsed() ?? 0)} / {fmtTokens(poolLimit() as number)}
                 </span>
               </SettingsRowV2>
             </Show>
-            <SettingsRowV2 title="До сброса квоты" description="Сколько дней осталось до обновления квоты">
+            <SettingsRowV2 title="До сброса лимита" description="Лимит обновляется каждый день в полночь по московскому времени">
               <span>{resetLabel()}</span>
             </SettingsRowV2>
           </SettingsListV2>
