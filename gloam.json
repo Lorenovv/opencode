@@ -6,7 +6,7 @@
       "npm": "@ai-sdk/openai-compatible",
       "name": "Gloam AI",
       "options": {
-        "baseURL": "https://gateway.gloam.ai/v1"
+        "baseURL": "https://gateway.gloam.ru/v1"
       },
       "models": {
         "gloam-opus-4.8": {
