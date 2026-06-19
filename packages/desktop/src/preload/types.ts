@@ -137,6 +137,19 @@ export type GloamAuthAPI = {
   applyDeepLink: (url: string) => Promise<GloamSession | null>
 }
 
+// GitHub connection (PAT-only). The token is stored encrypted in the main
+// process; these calls only report or mutate connection state. Applying a
+// change requires a sidecar restart (the renderer triggers `relaunch`).
+export type GloamGithubStatus = {
+  connected: boolean
+}
+
+export type GloamGithubAPI = {
+  status: () => Promise<GloamGithubStatus>
+  setToken: (token: string) => Promise<GloamGithubStatus>
+  clear: () => Promise<GloamGithubStatus>
+}
+
 export type ElectronAPI = {
   killSidecar: () => Promise<void>
   installCli: () => Promise<string>
@@ -144,6 +157,7 @@ export type ElectronAPI = {
   wslServers: WslServersAPI
   updater: UpdaterAPI
   gloamAuth: GloamAuthAPI
+  gloamGithub: GloamGithubAPI
   consumeInitialDeepLinks: () => Promise<string[]>
   getDefaultServerUrl: () => Promise<string | null>
   setDefaultServerUrl: (url: string | null) => Promise<void>

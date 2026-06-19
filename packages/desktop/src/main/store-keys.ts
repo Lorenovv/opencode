@@ -8,3 +8,9 @@ export const PINCH_ZOOM_ENABLED_KEY = "pinchZoomEnabled"
 export const GLOAM_AUTH_STORE = "gloam.auth"
 export const GLOAM_SESSION_TOKEN_KEY = "sessionToken"
 export const GLOAM_SESSION_EXPIRES_KEY = "sessionExpiresAtUnix"
+
+// GitHub MCP connection. The personal access token is stored encrypted (via
+// Electron safeStorage) in its own electron-store file, never in plaintext and
+// never alongside app settings.
+export const GLOAM_GITHUB_STORE = "gloam.github"
+export const GLOAM_GITHUB_PAT_KEY = "patCipher"

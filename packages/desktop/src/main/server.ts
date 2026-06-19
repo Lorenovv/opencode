@@ -6,6 +6,7 @@ import { getLogger } from "./logging"
 import { getUserShell, loadShellEnv } from "./shell-env"
 import { getStore } from "./store"
 import { DEFAULT_SERVER_URL_KEY } from "./store-keys"
+import { getDecryptedToken, GITHUB_MCP_URL, GITHUB_PAT_ENV } from "./github-connection"
 
 export type HealthCheck = { wait: Promise<void> }
 
@@ -215,7 +216,41 @@ function createSidecarEnv(): Record<string, string> {
   delete env.DEBUG
   if (process.platform === "linux") delete env.LD_PRELOAD
   if (!app.isPackaged) env.OPENCODE_DISABLE_CHANNEL_DB = "1"
+  applyGithubMcpEnv(env)
   return env
+}
+
+// When the user has connected GitHub via a personal access token, expose the
+// token to the embedded opencode server (as GLOAM_GITHUB_PAT) and register the
+// GitHub remote MCP server through OPENCODE_CONFIG_CONTENT. The config only
+// references the token via {env:...}, so the raw secret never lands in any
+// opencode config file on disk.
+function applyGithubMcpEnv(env: Record<string, string>) {
+  const token = getDecryptedToken()
+  if (!token) return
+  env[GITHUB_PAT_ENV] = token
+
+  const githubServer = {
+    type: "remote",
+    url: GITHUB_MCP_URL,
+    enabled: true,
+    oauth: false,
+    headers: { Authorization: "Bearer {env:" + GITHUB_PAT_ENV + "}" },
+  }
+
+  let content: Record<string, unknown> = {}
+  if (env.OPENCODE_CONFIG_CONTENT) {
+    try {
+      const parsed = JSON.parse(env.OPENCODE_CONFIG_CONTENT)
+      if (parsed && typeof parsed === "object") content = parsed as Record<string, unknown>
+    } catch {
+      content = {}
+    }
+  }
+  const existingMcp = content.mcp
+  const mcp = existingMcp && typeof existingMcp === "object" ? (existingMcp as Record<string, unknown>) : {}
+  content.mcp = { ...mcp, github: githubServer }
+  env.OPENCODE_CONFIG_CONTENT = JSON.stringify(content)
 }
 
 function delay(ms: number) {
