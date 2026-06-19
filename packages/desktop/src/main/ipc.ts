@@ -9,6 +9,7 @@ import type { FatalRendererError, GloamLoginRequest, ServerReadyData, TitlebarTh
 import { runDesktopMenuAction } from "./desktop-menu-actions"
 import { assertAttachmentBudget, createPickedFileAuthorizations } from "./attachment-picker"
 import * as gloamAuth from "./gloam-auth"
+import * as githubConnection from "./github-connection"
 import { getStore } from "./store"
 import { getPinchZoomEnabled, setPinchZoomEnabled, setTitlebar, updateTitlebar } from "./windows"
 import type { UpdaterController } from "./updater-controller"
@@ -90,6 +91,15 @@ export function registerIpcHandlers(deps: Deps) {
   ipcMain.handle("gloam-auth-apply-deep-link", (_event: IpcMainInvokeEvent, url: string) =>
     gloamAuth.applyDeepLinkSession(url),
   )
+  ipcMain.handle("gloam-github-status", () => ({ connected: githubConnection.hasToken() }))
+  ipcMain.handle("gloam-github-set-token", (_event: IpcMainInvokeEvent, token: string) => {
+    githubConnection.setToken(token)
+    return { connected: githubConnection.hasToken() }
+  })
+  ipcMain.handle("gloam-github-clear", () => {
+    githubConnection.clearToken()
+    return { connected: false }
+  })
   ipcMain.handle("set-background-color", (_event: IpcMainInvokeEvent, color: string) => deps.setBackgroundColor(color))
   ipcMain.handle("export-debug-logs", () => deps.exportDebugLogs())
   ipcMain.handle("record-fatal-renderer-error", (_event: IpcMainInvokeEvent, error: FatalRendererError) =>

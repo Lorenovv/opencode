@@ -12,6 +12,7 @@ import { SettingsModelsV2 } from "./models"
 import { SettingsLimitsV2 } from "./limits"
 import "./settings-v2.css"
 import { SettingsServersV2 } from "./servers"
+import { SettingsConnectionsV2 } from "./connections"
 
 type GloamMe = {
   authenticated: boolean
@@ -140,6 +141,10 @@ export const DialogSettings: Component = () => {
                       <Icon name="server" />
                       {language.t("status.popover.tab.servers")}
                     </TabsV2.Trigger>
+                    <TabsV2.Trigger value="connections">
+                      <Icon name="providers" />
+                      Подключения
+                    </TabsV2.Trigger>
                     <Show when={fullAccess()}>
                       <TabsV2.Trigger value="providers">
                         <Icon name="providers" />
@@ -193,6 +198,9 @@ export const DialogSettings: Component = () => {
         </TabsV2.Content>
         <TabsV2.Content value="servers" class="settings-v2-panel">
           <SettingsServersV2 />
+        </TabsV2.Content>
+        <TabsV2.Content value="connections" class="settings-v2-panel">
+          <SettingsConnectionsV2 />
         </TabsV2.Content>
         <Show when={fullAccess()}>
           <TabsV2.Content value="providers" class="settings-v2-panel">

@@ -71,6 +71,11 @@ const api: ElectronAPI = {
     pollTelegram: (state) => ipcRenderer.invoke("gloam-auth-telegram-poll", state),
     applyDeepLink: (url) => ipcRenderer.invoke("gloam-auth-apply-deep-link", url),
   },
+  gloamGithub: {
+    status: () => ipcRenderer.invoke("gloam-github-status"),
+    setToken: (token) => ipcRenderer.invoke("gloam-github-set-token", token),
+    clear: () => ipcRenderer.invoke("gloam-github-clear"),
+  },
   consumeInitialDeepLinks: () => ipcRenderer.invoke("consume-initial-deep-links"),
   getDefaultServerUrl: () => ipcRenderer.invoke("get-default-server-url"),
   setDefaultServerUrl: (url) => ipcRenderer.invoke("set-default-server-url", url),
