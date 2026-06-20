@@ -12,7 +12,7 @@ import { useServerSync } from "@/context/server-sync"
 // catalog from the well-known document. That reload is asynchronous, so a
 // single refetch right after dispose can race ahead of it and miss Gloam. We
 // therefore re-check the provider snapshot a few times until Gloam shows up.
-const GLOAM_GATEWAY_URL = "https://gateway.gloam.ru"
+const GLOAM_GATEWAY_URL = "https://gateway.gloam.site"
 const GLOAM_WELLKNOWN_ENV = "GLOAM_API_KEY"
 const GLOAM_PROVIDER_ID = "gloam"
 

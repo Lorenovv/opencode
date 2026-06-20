@@ -15,7 +15,7 @@ import { useLanguage } from "@/context/language"
 
 // Same gateway the Gloam provider points at; used to fetch per-model quota
 // multipliers for the "x N" cost tag shown next to each Gloam model.
-const GLOAM_GATEWAY_URL = "https://gateway.gloam.ru"
+const GLOAM_GATEWAY_URL = "https://gateway.gloam.site"
 
 const isFree = (provider: string, cost: { input: number } | undefined) =>
   provider === "opencode" && (!cost || cost.input === 0)
