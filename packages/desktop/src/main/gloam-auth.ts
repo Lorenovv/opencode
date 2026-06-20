@@ -29,12 +29,12 @@ const DESKTOP_CLIENT_HEADER = "desktop"
 // providerID inside the sidecar's auth store (auth.json). On logout we must
 // remove that credential from disk, otherwise the freshly-restarted sidecar
 // re-reads it and silently reconnects the provider with the stale token.
-const GLOAM_GATEWAY_PROVIDER_ID = "https://gloam-gateway.vercel.app"
+const GLOAM_GATEWAY_PROVIDER_ID = "https://gateway.gloam.site"
 
 // Origin of the Gloam gateway (the OpenAI-compatible proxy). The coding-credit
 // pool lives here, not on the bot backend, so the Limits tab reads usage from
 // the gateway. Overridable for local/staging via GLOAM_GATEWAY_URL.
-const DEFAULT_GATEWAY_BASE = "https://gloam-gateway.vercel.app"
+const DEFAULT_GATEWAY_BASE = "https://gateway.gloam.site"
 
 function apiBase(): string {
 	const raw = (process.env.GLOAM_API_BASE_URL ?? "").trim()
